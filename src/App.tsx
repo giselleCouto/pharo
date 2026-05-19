@@ -1,0 +1,40 @@
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ROUTE_PATHS } from '@/lib/types';
+import { Layout } from '@/components/Layout';
+import { AuthGuard } from '@/components/AuthGuard';
+import LandingPage from '@/pages/Landing';
+import AuthPage from '@/pages/Auth';
+import ConfiguracaoPage from '@/pages/Configuracao';
+import OtimizacaoPage from '@/pages/Otimizacao';
+import ResultadosPage from '@/pages/Resultados';
+import PlanosPage from '@/pages/Planos';
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* Públicas */}
+        <Route path={ROUTE_PATHS.LANDING} element={<LandingPage />} />
+        <Route path={ROUTE_PATHS.AUTH} element={<AuthPage />} />
+
+        {/* Protegidas — exigem autenticação */}
+        <Route path={ROUTE_PATHS.CONFIGURACAO} element={
+          <AuthGuard><Layout><ConfiguracaoPage /></Layout></AuthGuard>
+        } />
+        <Route path={ROUTE_PATHS.OTIMIZACAO} element={
+          <AuthGuard><Layout><OtimizacaoPage /></Layout></AuthGuard>
+        } />
+        <Route path={ROUTE_PATHS.RESULTADOS} element={
+          <AuthGuard><Layout><ResultadosPage /></Layout></AuthGuard>
+        } />
+        <Route path={ROUTE_PATHS.PLANOS} element={
+          <AuthGuard><Layout><PlanosPage /></Layout></AuthGuard>
+        } />
+
+        <Route path="*" element={<Navigate to={ROUTE_PATHS.LANDING} replace />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;

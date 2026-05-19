@@ -1,0 +1,291 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import {
+  Tenant, TenantUser, Sessao, PlanoId, PLANOS,
+  tenantKey, gerarTenantId, gerarToken, iniciais,
+  verificarResetMensal, podeOtimizar,
+} from '@/lib/tenant';
+
+// ─── Tipos do Store ────────────────────────────────────────────
+
+interface TenantStore {
+  // Estado atual
+  sessao: Sessao | null;
+  tenant: Tenant | null;
+  erro: string | null;
+
+  // Ações de autenticação
+  registrar: (params: {
+    nomeEmpresa: string;
+    cnpj?: string;
+    nomeUsuario: string;
+    email: string;
+    cargo: string;
+    senha: string;
+    plano_id: PlanoId;
+    cobranca_anual: boolean;
+  }) => { ok: boolean; mensagem: string };
+
+  login: (tenantId: string, email: string, senha: string) => { ok: boolean; mensagem: string };
+  logout: () => void;
+  limparErro: () => void;
+
+  // Ações de tenant
+  registrarOtimizacao: () => { pode: boolean; motivo?: string };
+  atualizarTenant: (t: Partial<Tenant>) => void;
+  adicionarUsuario: (u: Omit<TenantUser, 'id' | 'criado_em' | 'avatar_initials'> & { senha: string }) => { ok: boolean; mensagem: string };
+
+  // Storage isolado por tenant
+  getTenantStorage: () => Storage | null;
+  setTenantData: (key: string, value: unknown) => void;
+  getTenantData: <T>(key: string, fallback: T) => T;
+}
+
+// ─── Credenciais (armazenadas separado do tenant) ──────────────
+// Mapa: tenantId+email → hash da senha (base64 simples)
+function hashSenha(senha: string): string {
+  // Hash simples para demo — em produção usar bcrypt/argon2 no backend
+  return btoa(encodeURIComponent(senha + '_cab2026'));
+}
+
+function salvarCredencial(tenantId: string, email: string, senha: string) {
+  const chave = `cab_cred_${tenantId}_${email.toLowerCase()}`;
+  localStorage.setItem(chave, hashSenha(senha));
+}
+
+function verificarCredencial(tenantId: string, email: string, senha: string): boolean {
+  const chave = `cab_cred_${tenantId}_${email.toLowerCase()}`;
+  const stored = localStorage.getItem(chave);
+  return stored === hashSenha(senha);
+}
+
+// ─── Tenant registry (lista de todos os tenants) ──────────────
+function listarTenants(): Tenant[] {
+  const raw = localStorage.getItem('cab_tenant_registry');
+  if (!raw) return [];
+  try { return JSON.parse(raw) as Tenant[]; } catch { return []; }
+}
+
+function salvarTenant(tenant: Tenant) {
+  const lista = listarTenants().filter(t => t.id !== tenant.id);
+  lista.push(tenant);
+  localStorage.setItem('cab_tenant_registry', JSON.stringify(lista));
+}
+
+function buscarTenant(tenantId: string): Tenant | null {
+  return listarTenants().find(t => t.id === tenantId) ?? null;
+}
+
+// ─── Tenant Store ──────────────────────────────────────────────
+export const useTenantStore = create<TenantStore>()(
+  persist(
+    (set, get) => ({
+      sessao: null as Sessao | null,
+      tenant: null as Tenant | null,
+      erro: null as string | null,
+
+      // ── Registrar novo tenant ──────────────────────────────
+      registrar: ({ nomeEmpresa, cnpj, nomeUsuario, email, cargo, senha, plano_id, cobranca_anual }) => {
+        const tenantId = gerarTenantId(nomeEmpresa);
+
+        // Verifica duplicidade
+        if (buscarTenant(tenantId)) {
+          return { ok: false, mensagem: `Empresa "${nomeEmpresa}" já cadastrada. Use o login.` };
+        }
+
+        const userId = `usr_${Date.now()}`;
+        const agora = new Date().toISOString();
+        const vencimento = new Date();
+        vencimento.setMonth(vencimento.getMonth() + 1);
+
+        const adminUser: TenantUser = {
+          id: userId,
+          nome: nomeUsuario,
+          email: email.toLowerCase(),
+          cargo,
+          avatar_initials: iniciais(nomeUsuario),
+          role: 'ADMIN',
+          criado_em: agora,
+        };
+
+        const novoTenant: Tenant = {
+          id: tenantId,
+          nome_empresa: nomeEmpresa,
+          cnpj,
+          plano_id,
+          plano_ativo: true,
+          data_inicio: agora,
+          data_vencimento: vencimento.toISOString(),
+          cobranca_anual,
+          uso_mensal: {
+            mes: agora.slice(0, 7),
+            otimizacoes_usadas: 0,
+            ultimo_reset: agora,
+          },
+          usuarios: [adminUser],
+        };
+
+        // Persiste
+        salvarTenant(novoTenant);
+        salvarCredencial(tenantId, email, senha);
+
+        // Cria sessão
+        const sessao: Sessao = {
+          tenant_id: tenantId,
+          user_id: userId,
+          token: gerarToken(),
+          iniciada_em: agora,
+          expira_em: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+        };
+
+        set({ tenant: novoTenant, sessao, erro: null });
+        return { ok: true, mensagem: 'Conta criada com sucesso!' };
+      },
+
+      // ── Login ──────────────────────────────────────────────
+      login: (tenantId, email, senha) => {
+        const tenant = buscarTenant(tenantId);
+        if (!tenant) {
+          return { ok: false, mensagem: 'Empresa não encontrada. Verifique o ID da empresa.' };
+        }
+
+        const user = tenant.usuarios.find(u => u.email === email.toLowerCase());
+        if (!user) {
+          return { ok: false, mensagem: 'Usuário não encontrado nessa empresa.' };
+        }
+
+        if (!verificarCredencial(tenantId, email, senha)) {
+          return { ok: false, mensagem: 'Senha incorreta.' };
+        }
+
+        // Verifica reset mensal de uso
+        const usoAtualizado = verificarResetMensal(tenant.uso_mensal);
+        if (usoAtualizado.mes !== tenant.uso_mensal.mes) {
+          const tenantAtual = { ...tenant, uso_mensal: usoAtualizado };
+          salvarTenant(tenantAtual);
+          set({ tenant: tenantAtual });
+        }
+
+        const sessao: Sessao = {
+          tenant_id: tenantId,
+          user_id: user.id,
+          token: gerarToken(),
+          iniciada_em: new Date().toISOString(),
+          expira_em: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+        };
+
+        set({ tenant: buscarTenant(tenantId), sessao, erro: null });
+        return { ok: true, mensagem: 'Login realizado com sucesso!' };
+      },
+
+      // ── Logout ─────────────────────────────────────────────
+      logout: () => set({ sessao: null, tenant: null, erro: null }),
+
+      limparErro: () => set({ erro: null }),
+
+      // ── Registrar uso de otimização ────────────────────────
+      registrarOtimizacao: () => {
+        const { tenant } = get();
+        if (!tenant) return { pode: false, motivo: 'Sessão inválida.' };
+
+        const check = podeOtimizar(tenant);
+        if (!check.pode) return check;
+
+        const usoAtualizado = {
+          ...tenant.uso_mensal,
+          otimizacoes_usadas: tenant.uso_mensal.otimizacoes_usadas + 1,
+        };
+        const tenantAtualizado = { ...tenant, uso_mensal: usoAtualizado };
+
+        salvarTenant(tenantAtualizado);
+        set({ tenant: tenantAtualizado });
+
+        return { pode: true, restam: check.restam - 1 };
+      },
+
+      // ── Atualizar dados do tenant ──────────────────────────
+      atualizarTenant: (parcial) => {
+        const { tenant } = get();
+        if (!tenant) return;
+        const atualizado = { ...tenant, ...parcial };
+        salvarTenant(atualizado);
+        set({ tenant: atualizado });
+      },
+
+      // ── Adicionar usuário ──────────────────────────────────
+      adicionarUsuario: ({ nome, email, cargo, senha, role }) => {
+        const { tenant } = get();
+        if (!tenant) return { ok: false, mensagem: 'Sem sessão ativa.' };
+
+        const plano = PLANOS[tenant.plano_id];
+        if (plano.limite_usuarios > 0 && tenant.usuarios.length >= plano.limite_usuarios) {
+          return { ok: false, mensagem: `Limite de ${plano.limite_usuarios} usuários atingido.` };
+        }
+
+        const existe = tenant.usuarios.find(u => u.email === email.toLowerCase());
+        if (existe) return { ok: false, mensagem: 'E-mail já cadastrado.' };
+
+        const novoUser: TenantUser = {
+          id: `usr_${Date.now()}`,
+          nome, email: email.toLowerCase(), cargo,
+          avatar_initials: iniciais(nome),
+          role,
+          criado_em: new Date().toISOString(),
+        };
+
+        salvarCredencial(tenant.id, email, senha);
+        const atualizado = { ...tenant, usuarios: [...tenant.usuarios, novoUser] };
+        salvarTenant(atualizado);
+        set({ tenant: atualizado });
+        return { ok: true, mensagem: 'Usuário adicionado.' };
+      },
+
+      // ── Storage isolado por tenant ─────────────────────────
+      getTenantStorage: () => {
+        if (typeof window === 'undefined') return null;
+        return localStorage;
+      },
+
+      setTenantData: (key, value) => {
+        const { tenant } = get();
+        if (!tenant) return;
+        localStorage.setItem(tenantKey(tenant.id, key), JSON.stringify(value));
+      },
+
+      getTenantData: <T>(key: string, fallback: T): T => {
+        const { tenant } = get();
+        if (!tenant) return fallback;
+        const raw = localStorage.getItem(tenantKey(tenant.id, key));
+        if (!raw) return fallback;
+        try { return JSON.parse(raw) as T; } catch { return fallback; }
+      },
+    }),
+    {
+      name: 'cab_sessao_v1',
+      storage: createJSONStorage(() => sessionStorage), // sessão expira ao fechar aba
+      partialize: (s) => ({ sessao: s.sessao, tenant: s.tenant }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.sessao && state.tenant) {
+          // Verifica expiração da sessão
+          if (new Date(state.sessao.expira_em) < new Date()) {
+            state.logout();
+          } else {
+            // Busca dados frescos do tenant
+            const fresh = buscarTenant(state.sessao.tenant_id);
+            if (fresh) {
+              const uso = verificarResetMensal(fresh.uso_mensal);
+              state.tenant = { ...fresh, uso_mensal: uso };
+            }
+          }
+        }
+      },
+    }
+  )
+);
+
+// ─── Hook de conveniência ──────────────────────────────────────
+export function useAuth() {
+  const { sessao, tenant, erro, login, logout, registrar, limparErro } = useTenantStore();
+  const user = tenant?.usuarios.find(u => u.id === sessao?.user_id);
+  return { sessao, tenant, user, erro, isAutenticado: !!sessao && !!tenant, login, logout, registrar, limparErro };
+}

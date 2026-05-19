@@ -1,0 +1,226 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+==========================================================================
+【AI HANDOVER NOTE】
+1. DESIGN PHILOSOPHY:
+   - Maritime Command Center Aesthetic: Interface inspirada em sistemas de controle de frotas marítimas profissionais, com foco em legibilidade de dados críticos e hierarquia visual clara.
+   - Atmosphere-First: Fundo escuro (navy/slate) para reduzir fadiga visual em operações longas, com elementos luminosos (cyan/teal) simulando displays náuticos modernos.
+   - Data-Dense Clarity: Layout otimizado para exibir grandes volumes de dados logísticos (tabelas, métricas, custos) sem comprometer a clareza visual.
+   - Physicality with Rim-Light: Cards e containers com bordas luminosas sutis (glow effect) para criar profundidade e separação visual entre módulos.
+
+2. TYPOGRAPHY:
+   - Sans (Inter): Escolhida por sua excepcional legibilidade em telas e ampla gama de pesos. Ideal para dashboards técnicos onde números, tabelas e textos longos coexistem. Sua geometria neutra transmite profissionalismo sem frieza.
+   - Mono (JetBrains Mono): Fonte monospace otimizada para exibição de dados numéricos, códigos de navio, coordenadas geográficas e valores monetários. Garante alinhamento perfeito em tabelas de custos e métricas.
+
+3. COLOR SYSTEM:
+   - Brand Principal (Hue 200°): Azul marinho profundo (Navy Blue) como cor de marca, evocando o oceano e a navegação marítima. Escolhido por transmitir confiança, estabilidade e expertise técnica.
+   - Mapeamento: --brand → --primary (ações principais), --accent (destaques de navegação/rotas), --ring (foco em inputs críticos).
+   - Cyan/Teal (Hue 180°): Usado em --accent para elementos de navegação, mapas e indicadores de status ativo. Simula displays de radar e sistemas náuticos modernos.
+   - Semantic Colors: --success (Hue 150°, verde oceânico) para demandas atendidas e viagens otimizadas; --warning (Hue 45°, âmbar) para alertas de capacidade/calado; --destructive (Hue 10°, vermelho coral) para violações de restrições.
+   - Contrast Strategy: Light mode usa fundo quase branco (L=0.98) com textos escuros para documentação; Dark mode (principal) usa slate profundo (L=0.12) com textos em off-white (L=0.92) para operação noturna.
+
+4. USAGE GUIDE:
+   - Layout: Dashboard full-width com sidebar fixa (configurações/filtros) e área principal dividida em grid responsivo para cards de cenários, tabelas de viagens e gráficos comparativos.
+   - Efeitos Especiais: backdrop-blur em modals e overlays; rim-light (box-shadow com glow cyan) em cards ativos; gradientes sutis em backgrounds de cards para criar profundidade.
+   - Componentes Críticos: Tabelas com zebra striping sutil, hover states com glow effect, badges coloridos para status de navios (TC/SPOT), progress bars com gradiente para ocupação de carga.
+   - Mapas: SVG simplificado com portos como círculos (tamanho proporcional ao volume), rotas como linhas curvas (bezier) com setas direcionais, cores diferenciadas por cenário.
+   - Regras de Negócio: Sempre exibir custos em USD com 2 casas decimais; volumes em CBM com separador de milhares; datas no formato ISO (YYYY-MM-DD); ocupação em % com 1 casa decimal; distâncias em milhas náuticas (NM).
+==========================================================================
+*/
+
+:root {
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Core UI Tokens */
+  --background: oklch(0.98 0.005 200);
+  --foreground: oklch(0.15 0.02 200);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 200);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 200);
+  --primary: oklch(0.42 0.18 220);
+  --primary-foreground: oklch(0.98 0.005 220);
+  --secondary: oklch(0.88 0.02 200);
+  --secondary-foreground: oklch(0.22 0.03 200);
+  --muted: oklch(0.92 0.01 200);
+  --muted-foreground: oklch(0.48 0.02 200);
+  --accent: oklch(0.52 0.16 180);
+  --accent-foreground: oklch(0.98 0.005 180);
+  --destructive: oklch(0.55 0.22 15);
+  --destructive-foreground: oklch(0.98 0.005 15);
+  --border: oklch(0.88 0.01 200);
+  --input: oklch(0.88 0.01 200);
+  --ring: oklch(0.52 0.16 180);
+  
+  /* Semantic Tokens */
+  --success: oklch(0.62 0.18 150);
+  --success-foreground: oklch(0.98 0.005 150);
+  --warning: oklch(0.75 0.18 65);
+  --warning-foreground: oklch(0.15 0.02 65);
+
+  /* Chart Tokens */
+  --chart-1: oklch(0.52 0.18 220);
+  --chart-2: oklch(0.58 0.16 180);
+  --chart-3: oklch(0.62 0.14 150);
+  --chart-4: oklch(0.68 0.12 45);
+  --chart-5: oklch(0.55 0.20 15);
+  
+  /* Sidebar Tokens */
+  --sidebar: oklch(0.96 0.005 200);
+  --sidebar-foreground: oklch(0.22 0.03 200);
+  --sidebar-primary: oklch(0.42 0.18 220);
+  --sidebar-primary-foreground: oklch(0.98 0.005 220);
+  --sidebar-accent: oklch(0.52 0.16 180);
+  --sidebar-accent-foreground: oklch(0.98 0.005 180);
+  --sidebar-border: oklch(0.88 0.01 200);
+  --sidebar-ring: oklch(0.52 0.16 180);
+}
+
+.dark {
+  --background: oklch(0.12 0.02 220);
+  --foreground: oklch(0.92 0.01 220);
+  --card: oklch(0.16 0.025 220);
+  --card-foreground: oklch(0.92 0.01 220);
+  --popover: oklch(0.14 0.025 220);
+  --popover-foreground: oklch(0.92 0.01 220);
+  --primary: oklch(0.62 0.20 220);
+  --primary-foreground: oklch(0.12 0.02 220);
+  --secondary: oklch(0.22 0.03 220);
+  --secondary-foreground: oklch(0.88 0.01 220);
+  --muted: oklch(0.20 0.025 220);
+  --muted-foreground: oklch(0.58 0.02 220);
+  --accent: oklch(0.65 0.18 180);
+  --accent-foreground: oklch(0.12 0.02 180);
+  --destructive: oklch(0.62 0.25 15);
+  --destructive-foreground: oklch(0.95 0.005 15);
+  --border: oklch(0.24 0.03 220);
+  --input: oklch(0.24 0.03 220);
+  --ring: oklch(0.65 0.18 180);
+  
+  /* Semantic Tokens */
+  --success: oklch(0.68 0.18 150);
+  --success-foreground: oklch(0.12 0.02 150);
+  --warning: oklch(0.78 0.18 65);
+  --warning-foreground: oklch(0.12 0.02 65);
+
+  /* Chart Tokens */
+  --chart-1: oklch(0.62 0.20 220);
+  --chart-2: oklch(0.65 0.18 180);
+  --chart-3: oklch(0.68 0.16 150);
+  --chart-4: oklch(0.72 0.14 45);
+  --chart-5: oklch(0.62 0.25 15);
+  
+  /* Sidebar Tokens */
+  --sidebar: oklch(0.14 0.025 220);
+  --sidebar-foreground: oklch(0.88 0.01 220);
+  --sidebar-primary: oklch(0.62 0.20 220);
+  --sidebar-primary-foreground: oklch(0.12 0.02 220);
+  --sidebar-accent: oklch(0.65 0.18 180);
+  --sidebar-accent-foreground: oklch(0.12 0.02 180);
+  --sidebar-border: oklch(0.24 0.03 220);
+  --sidebar-ring: oklch(0.65 0.18 180);
+}
+
+@theme inline {
+  /* Shadcn Core Mapping */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Charts Mapping */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar Mapping */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Semantic Mapping */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  /* Typography */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Radius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans min-h-screen;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  code, pre {
+    @apply font-mono;
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-primary;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40;
+  }
+}
