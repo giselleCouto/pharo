@@ -1,27 +1,114 @@
-# 技术栈
+# Cabotagem Otimizador v3.3
 
-该项目使用以下技术栈
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Sistema de suporte à decisão (DSS) para planejamento de rotas multi-porto e gestão de frota de cabotagem, com horizonte de planejamento de até dois meses. Integra restrições operacionais (calado, maré, janelas de ressuprimento, segregação de produtos) e modelos de custo (bunker, TC, SPOT, demurrage).
 
+## Stack tecnológica
 
-# 开发流程
+- **Vite** — build e dev server
+- **TypeScript** — tipagem estrita
+- **React 18** — interface
+- **shadcn-ui** + **Tailwind CSS** — componentes e estilo
+- **Zustand** — estado global e multitenancy (localStorage por tenant)
+- **Web Workers** — motor de otimização fora da thread principal
 
-1. 参考用户需求，调整 src/index.css 与 tailwind.config.ts 的主题风格
-2. 根据用户需求，划分出所需要实现的页面
-3. 整理好每个页面需要实现的功能，在 pages 下创建对应的文件夹及其下入口 Index.tsx
-4. 在 App.tsx 中创建路由配置，引入刚才的各个入口文件 Index.tsx
-5. 根据刚才整理的需求，如果需求简单，可以直接在 Index.tsx 中完成该页面的全部工作
-6. 如果需求复杂，可以将 page 拆分为若干个组件来实现，目录结构如下：
-    - Index.tsx 入口
-    - /components/ 组件
-    - /hooks/ 钩子
-    - /stores/ 如果有复杂交互通信时，可以使用 zustand 进行通信
-7. 在完成需求后，需要进行 pnpm i 安装依赖，并使用 npm run lint & npx tsc --noEmit -p tsconfig.app.json --strict 进行检查，并修复问题
+## Funcionalidades principais
 
-# 接入后端接口
-- 当需要新增接口或者操作 supabase 时，需要先在 src/api 新增对应 api 文件，并导出对应的数据类型，可以参考 src/demo.ts 文件，如果是 supabase 还需要做好实现
-- 前端与 supabase 做实现时，都需要完全按照数据类型进行实现，尽可能避免修改定好的数据类型，如果出现修改，需要检查所有引用该类型的文件
+- Otimização heurística multi-porto com **4 cenários** (Otimista, Base, Conservador, Custo Mínimo)
+- Motor de marés com síntese harmônica local (offline) e suporte opcional à WorldTides API
+- Validação de calado (UKC) por porto e data
+- Agrupamento estratégico de demandas, janelas de ressuprimento e sequenciamento de portos
+- Exportação JSON tipo API (metaheurística `multi_porto_heuristica_v3.3`)
+
+## Pré-requisitos
+
+- Node.js 18+
+- npm (ou pnpm)
+
+## Instalação e execução
+
+```bash
+# Instalar dependências
+npm install
+
+# Servidor de desenvolvimento (http://localhost:8080)
+npm run dev
+
+# Build de produção
+npm run build
+
+# Pré-visualizar build
+npm run preview
+```
+
+## Scripts úteis
+
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Inicia o Vite em modo desenvolvimento |
+| `npm run build` | Gera o bundle em `dist/` |
+| `npm run lint` | Executa o ESLint |
+| `npm run test:edge-functions` | Testes das edge functions Supabase (Deno) |
+
+### Verificação de tipos
+
+```bash
+npx tsc --noEmit -p tsconfig.app.json --strict
+```
+
+## Estrutura do projeto
+
+```
+src/
+├── api/              # Integrações com backend / Supabase
+├── components/       # Componentes de UI (incl. shadcn)
+├── data/             # Dados mock e configuração padrão
+├── hooks/            # Hooks React (otimizador, tenant, etc.)
+├── lib/
+│   ├── optimizer/    # Módulos do motor (ordenação, custos, restrições)
+│   ├── optimizer.ts
+│   ├── optimizer.worker.ts
+│   ├── tideEngine.ts # Previsão de maré (client-side)
+│   ├── mare.ts       # Calado efetivo e previsões
+│   └── types.ts
+└── pages/            # Páginas da aplicação
+```
+
+## Fluxo de desenvolvimento
+
+1. Ajuste o tema em `src/index.css` conforme a identidade visual desejada.
+2. Defina as páginas necessárias e crie pastas em `src/pages/` com `Index.tsx` como entrada.
+3. Registre as rotas em `src/App.tsx`.
+4. Para páginas simples, implemente tudo em `Index.tsx`; para páginas complexas, organize em:
+   - `Index.tsx` — entrada
+   - `components/` — componentes da página
+   - `hooks/` — lógica reutilizável
+   - `stores/` — estado compartilhado (Zustand), se necessário
+5. Antes de concluir, rode `npm run lint` e a verificação TypeScript acima.
+
+## Integração com backend
+
+- Novas APIs ou operações Supabase devem ser criadas em `src/api/`, exportando os tipos correspondentes (veja `src/api/demo.ts` como referência).
+- Mantenha os tipos em `src/lib/types.ts` como fonte da verdade; ao alterá-los, revise todos os arquivos que os importam.
+- Edge functions ficam em `supabase/edge_function/`.
+
+## Motor de otimização (v3.3)
+
+O algoritmo roda no **Web Worker** (`optimizer.worker.ts`) e utiliza:
+
+| Módulo | Responsabilidade |
+|--------|------------------|
+| `ordering.ts` | Agrupamento por porto, janelas de ressuprimento, faixas temporais, sequência de portos |
+| `costs.ts` | Bunker (FULL/ECO/MIN), TC/SPOT, demurrage |
+| `constraints.ts` | Calado, maré harmônica, segregação de produtos |
+
+Na interface: **Configuração** → **Otimização** → **Resultados**.
+
+> **Nota:** Com os dados mock padrão, o cenário **Otimista** tende a gerar viagens; cenários com ocupação mínima mais alta (Base/Conservador) podem não atingir o limite de ocupação com volumes pequenos — ajuste demandas ou premissas em Configuração.
+
+## Repositório
+
+Código publicado em: [github.com/giselleCouto/pharo](https://github.com/giselleCouto/pharo)
+
+## Licença
+
+Projeto privado. Uso restrito conforme acordado com os mantenedores.
