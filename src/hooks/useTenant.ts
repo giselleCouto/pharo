@@ -13,6 +13,8 @@ interface TenantStore {
   sessao: Sessao | null;
   tenant: Tenant | null;
   erro: string | null;
+  /** true após reidratação do sessionStorage (evita race com login) */
+  _hasHydrated: boolean;
 
   // Ações de autenticação
   registrar: (params: {
@@ -83,6 +85,7 @@ export const useTenantStore = create<TenantStore>()(
       sessao: null as Sessao | null,
       tenant: null as Tenant | null,
       erro: null as string | null,
+      _hasHydrated: false,
 
       // ── Registrar novo tenant ──────────────────────────────
       registrar: ({ nomeEmpresa, cnpj, nomeUsuario, email, cargo, senha, plano_id, cobranca_anual }) => {
@@ -144,37 +147,39 @@ export const useTenantStore = create<TenantStore>()(
 
       // ── Login ──────────────────────────────────────────────
       login: (tenantId, email, senha) => {
-        const tenant = buscarTenant(tenantId);
+        const id = tenantId.trim().toLowerCase();
+        const emailNorm = email.trim().toLowerCase();
+
+        const tenant = buscarTenant(id);
         if (!tenant) {
           return { ok: false, mensagem: 'Empresa não encontrada. Verifique o ID da empresa.' };
         }
 
-        const user = tenant.usuarios.find(u => u.email === email.toLowerCase());
+        const user = tenant.usuarios.find(u => u.email === emailNorm);
         if (!user) {
           return { ok: false, mensagem: 'Usuário não encontrado nessa empresa.' };
         }
 
-        if (!verificarCredencial(tenantId, email, senha)) {
+        if (!verificarCredencial(id, emailNorm, senha)) {
           return { ok: false, mensagem: 'Senha incorreta.' };
         }
 
-        // Verifica reset mensal de uso
         const usoAtualizado = verificarResetMensal(tenant.uso_mensal);
+        let tenantAtual = tenant;
         if (usoAtualizado.mes !== tenant.uso_mensal.mes) {
-          const tenantAtual = { ...tenant, uso_mensal: usoAtualizado };
+          tenantAtual = { ...tenant, uso_mensal: usoAtualizado };
           salvarTenant(tenantAtual);
-          set({ tenant: tenantAtual });
         }
 
         const sessao: Sessao = {
-          tenant_id: tenantId,
+          tenant_id: id,
           user_id: user.id,
           token: gerarToken(),
           iniciada_em: new Date().toISOString(),
           expira_em: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
         };
 
-        set({ tenant: buscarTenant(tenantId), sessao, erro: null });
+        set({ tenant: tenantAtual, sessao, erro: null, _hasHydrated: true });
         return { ok: true, mensagem: 'Login realizado com sucesso!' };
       },
 
@@ -265,19 +270,26 @@ export const useTenantStore = create<TenantStore>()(
       storage: createJSONStorage(() => sessionStorage), // sessão expira ao fechar aba
       partialize: (s) => ({ sessao: s.sessao, tenant: s.tenant }),
       onRehydrateStorage: () => (state) => {
-        if (state?.sessao && state.tenant) {
-          // Verifica expiração da sessão
+        if (!state) {
+          useTenantStore.setState({ _hasHydrated: true });
+          return;
+        }
+
+        if (state.sessao) {
           if (new Date(state.sessao.expira_em) < new Date()) {
             state.logout();
           } else {
-            // Busca dados frescos do tenant
             const fresh = buscarTenant(state.sessao.tenant_id);
             if (fresh) {
               const uso = verificarResetMensal(fresh.uso_mensal);
               state.tenant = { ...fresh, uso_mensal: uso };
+            } else {
+              state.logout();
             }
           }
         }
+
+        state._hasHydrated = true;
       },
     }
   )

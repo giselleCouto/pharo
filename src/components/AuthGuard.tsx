@@ -9,12 +9,14 @@ import { PLANOS, formatarPreco, podeOtimizar } from '@/lib/tenant';
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { isAutenticado } = useAuth();
+  const hasHydrated = useTenantStore((s) => s._hasHydrated);
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!isAutenticado) navigate(ROUTE_PATHS.AUTH, { replace: true });
-  }, [isAutenticado, navigate]);
+  }, [isAutenticado, hasHydrated, navigate]);
 
-  if (!isAutenticado) return null;
+  if (!hasHydrated || !isAutenticado) return null;
   return <>{children}</>;
 }
 

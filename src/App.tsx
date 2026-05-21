@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ROUTE_PATHS } from '@/lib/types';
 import { Layout } from '@/components/Layout';
 import { AuthGuard } from '@/components/AuthGuard';
+import { useTenantStore } from '@/hooks/useTenant';
 import LandingPage from '@/pages/Landing';
 import AuthPage from '@/pages/Auth';
 import ConfiguracaoPage from '@/pages/Configuracao';
@@ -10,6 +12,14 @@ import ResultadosPage from '@/pages/Resultados';
 import PlanosPage from '@/pages/Planos';
 
 function App() {
+  useEffect(() => {
+    const markHydrated = () => useTenantStore.setState({ _hasHydrated: true });
+    if (useTenantStore.persist.hasHydrated()) {
+      markHydrated();
+    }
+    return useTenantStore.persist.onFinishHydration(markHydrated);
+  }, []);
+
   return (
     <Router>
       <Routes>

@@ -11,6 +11,12 @@ import {
   CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Anchor, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  ensureDemoAccount,
+  DEMO_TENANT_ID,
+  DEMO_EMAIL,
+  DEMO_SENHA,
+} from '@/lib/demoAccount';
 
 type Modo = 'LOGIN' | 'REGISTRO';
 type EtapaRegistro = 1 | 2 | 3;
@@ -48,7 +54,20 @@ export default function AuthPage() {
     e.preventDefault();
     setMsgErro('');
     setLoading(true);
-    const { ok, mensagem } = login(loginTenantId.trim(), loginEmail.trim(), loginSenha);
+    const { ok, mensagem } = login(loginTenantId, loginEmail, loginSenha);
+    setLoading(false);
+    if (ok) navigate(ROUTE_PATHS.CONFIGURACAO);
+    else setMsgErro(mensagem);
+  }
+
+  function entrarComDemo() {
+    ensureDemoAccount();
+    setLoginTenantId(DEMO_TENANT_ID);
+    setLoginEmail(DEMO_EMAIL);
+    setLoginSenha(DEMO_SENHA);
+    setMsgErro('');
+    setLoading(true);
+    const { ok, mensagem } = login(DEMO_TENANT_ID, DEMO_EMAIL, DEMO_SENHA);
     setLoading(false);
     if (ok) navigate(ROUTE_PATHS.CONFIGURACAO);
     else setMsgErro(mensagem);
@@ -256,12 +275,9 @@ export default function AuthPage() {
                 <p>Senha: <code className="bg-muted px-1 rounded">demo123</code></p>
                 <Button size="sm" variant="outline" className="mt-2 w-full text-xs h-7"
                   type="button"
-                  onClick={() => {
-                    setLoginTenantId('demo-pharos');
-                    setLoginEmail('demo@pharos.app');
-                    setLoginSenha('demo123');
-                  }}>
-                  Preencher com demo
+                  disabled={loading}
+                  onClick={entrarComDemo}>
+                  Entrar com conta demo
                 </Button>
               </div>
             </form>
