@@ -4,6 +4,7 @@ import { ROUTE_PATHS } from '@/lib/types';
 import { Layout } from '@/components/Layout';
 import { AuthGuard } from '@/components/AuthGuard';
 import { useTenantStore } from '@/hooks/useTenant';
+import { ensureDemoAccount, DEMO_TENANT_ID, getDemoTenant } from '@/lib/demoAccount';
 import LandingPage from '@/pages/Landing';
 import AuthPage from '@/pages/Auth';
 import ConfiguracaoPage from '@/pages/Configuracao';
@@ -13,7 +14,15 @@ import PlanosPage from '@/pages/Planos';
 
 function App() {
   useEffect(() => {
-    const markHydrated = () => useTenantStore.setState({ _hasHydrated: true });
+    ensureDemoAccount();
+    const markHydrated = () => {
+      const state = useTenantStore.getState();
+      if (state.sessao?.tenant_id === DEMO_TENANT_ID) {
+        const fresh = getDemoTenant();
+        if (fresh) useTenantStore.setState({ tenant: fresh });
+      }
+      useTenantStore.setState({ _hasHydrated: true });
+    };
     if (useTenantStore.persist.hasHydrated()) {
       markHydrated();
     }

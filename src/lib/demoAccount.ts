@@ -2,10 +2,14 @@
  * Conta demo — garante tenant e credencial sempre consistentes no localStorage.
  */
 import type { Tenant, TenantUser } from '@/lib/tenant';
+import { verificarResetMensal } from '@/lib/tenant';
 
 export const DEMO_TENANT_ID = 'demo-pharos';
 export const DEMO_EMAIL = 'demo@pharos.app';
 export const DEMO_SENHA = 'demo123';
+
+/** Máximo de execuções do motor (= planos de cabotagem gerados) na conta demo */
+export const DEMO_LIMITE_OTIMIZACOES = 2;
 
 const REGISTRY_KEY = 'cab_tenant_registry';
 const LEGACY_TENANT_ID = 'demo-cabotagem';
@@ -37,13 +41,26 @@ function salvarCredencial(tenantId: string, email: string, senha: string): void 
   localStorage.setItem(credKey(tenantId, email), hashSenha(senha));
 }
 
-/** Cria ou atualiza a conta demo (idempotente). */
+export function isContaDemo(tenantId: string): boolean {
+  return tenantId === DEMO_TENANT_ID;
+}
+
+/** Cria ou atualiza a conta demo (idempotente, preserva contador de uso). */
 export function ensureDemoAccount(): void {
   if (typeof window === 'undefined') return;
 
   const agora = new Date().toISOString();
   const venc = new Date();
   venc.setMonth(venc.getMonth() + 1);
+
+  const existente = listarTenants().find((t) => t.id === DEMO_TENANT_ID);
+  const usoPreservado = verificarResetMensal(
+    existente?.uso_mensal ?? {
+      mes: agora.slice(0, 7),
+      otimizacoes_usadas: 0,
+      ultimo_reset: agora,
+    }
+  );
 
   const demoUser: TenantUser = {
     id: 'usr_demo_001',
@@ -52,22 +69,18 @@ export function ensureDemoAccount(): void {
     cargo: 'Analista de Logística',
     avatar_initials: 'UD',
     role: 'ADMIN',
-    criado_em: agora,
+    criado_em: existente?.usuarios[0]?.criado_em ?? agora,
   };
 
   const demoTenant: Tenant = {
     id: DEMO_TENANT_ID,
     nome_empresa: 'Demo Pharos',
-    plano_id: 'PROFISSIONAL',
+    plano_id: 'DEMO',
     plano_ativo: true,
-    data_inicio: agora,
+    data_inicio: existente?.data_inicio ?? agora,
     data_vencimento: venc.toISOString(),
     cobranca_anual: false,
-    uso_mensal: {
-      mes: agora.slice(0, 7),
-      otimizacoes_usadas: 0,
-      ultimo_reset: agora,
-    },
+    uso_mensal: usoPreservado,
     usuarios: [demoUser],
   };
 
@@ -79,7 +92,12 @@ export function ensureDemoAccount(): void {
 
   salvarCredencial(DEMO_TENANT_ID, DEMO_EMAIL, DEMO_SENHA);
 
-  // Remove credenciais legadas da rebrand
   localStorage.removeItem(credKey(LEGACY_TENANT_ID, LEGACY_EMAIL));
   localStorage.removeItem(credKey(DEMO_TENANT_ID, LEGACY_EMAIL));
+}
+
+/** Retorna tenant demo atualizado (após ensure). */
+export function getDemoTenant(): Tenant | null {
+  ensureDemoAccount();
+  return listarTenants().find((t) => t.id === DEMO_TENANT_ID) ?? null;
 }

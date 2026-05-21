@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useTenant';
-import { PLANOS, formatarPreco, percentualUso, podeOtimizar } from '@/lib/tenant';
+import { PLANOS, formatarPreco, percentualUso, podeOtimizar, isPlanoDemo } from '@/lib/tenant';
 import { ROUTE_PATHS } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ export default function PlanosPage() {
   const usoAtual = tenant.uso_mensal.otimizacoes_usadas;
   const pct = percentualUso(tenant);
   const check = podeOtimizar(tenant);
+  const demo = isPlanoDemo(tenant);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -37,6 +38,20 @@ export default function PlanosPage() {
           Gerencie seu plano atual e veja o uso do período
         </p>
       </div>
+
+      {demo && (
+        <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Você está na <strong className="text-foreground">conta demonstração</strong>. Para gerar novos planos
+            de cabotagem após o limite, crie sua empresa e assine um plano pago.
+          </p>
+          <Link to={ROUTE_PATHS.AUTH} state={{ modo: 'REGISTRO' }}>
+            <Button size="sm" className="gap-1.5 shrink-0">
+              Criar conta <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Status atual */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">

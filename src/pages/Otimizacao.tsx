@@ -1,17 +1,19 @@
 import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useOtimizadorStore } from '@/hooks/useOtimizador';
 import { ROUTE_PATHS, TipoCenario } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Zap, CheckCircle, Clock, AlertCircle, Ship, Package, MapPin, Anchor, Crown } from 'lucide-react';
+import { Zap, CheckCircle, Clock, AlertCircle, Ship, Package, MapPin, Anchor } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatarUsd } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useTenant';
-import { podeOtimizar, PLANOS, percentualUso } from '@/lib/tenant';
+import { podeOtimizar, PLANOS, percentualUso, isPlanoDemo } from '@/lib/tenant';
+import { DEMO_LIMITE_OTIMIZACOES } from '@/lib/demoAccount';
+import { LimitePlanoAlert } from '@/components/LimitePlanoAlert';
 
 const CENARIO_INFO: Record<TipoCenario, { cor: string; descricao: string; icon: string }> = {
   OTIMISTA: { cor: 'text-success border-success/30 bg-success/5', descricao: 'Maximiza atendimento de demanda', icon: '🚀' },
@@ -29,8 +31,10 @@ export default function OtimizacaoPage() {
   const naviosAtivos = navios.filter((n) => n.ativo);
   const volTotal = demandas.reduce((s, d) => s + d.volume_cbm, 0);
   const plano = tenant ? PLANOS[tenant.plano_id] : null;
+  const demo = tenant ? isPlanoDemo(tenant) : false;
   const check = tenant ? podeOtimizar(tenant) : { pode: true, restam: 999 };
   const pct = tenant ? percentualUso(tenant) : 0;
+  const usoAtual = tenant?.uso_mensal.otimizacoes_usadas ?? 0;
 
   const handleExecutar = async () => {
     resetar();
@@ -88,19 +92,23 @@ export default function OtimizacaoPage() {
         </Button>
       </div>
 
-      {/* Alerta de bloqueio de plano */}
-      {(erroBloqueio || !check.pode) && (
-        <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/30 bg-destructive/5">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <span className="text-sm font-medium">{erroBloqueio ?? check.motivo}</span>
-          </div>
-          <Link to={ROUTE_PATHS.PLANOS}>
-            <Button size="sm" className="gap-1.5 bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30">
-              <Crown className="w-3.5 h-3.5" /> Ver planos
-            </Button>
-          </Link>
+      {/* Uso demo / limite de plano */}
+      {tenant && demo && check.pode && (
+        <div className="p-4 rounded-xl border border-border bg-muted/30 text-sm">
+          <p className="font-medium text-foreground">Conta demonstração</p>
+          <p className="text-muted-foreground text-xs mt-1">
+            Você usou <strong>{usoAtual}</strong> de <strong>{DEMO_LIMITE_OTIMIZACOES}</strong> planos de
+            cabotagem permitidos. Restam <strong>{check.restam}</strong> execução
+            {check.restam !== 1 ? 'ões' : ''} (cada uma gera 4 cenários de rota).
+          </p>
         </div>
+      )}
+
+      {tenant && (erroBloqueio || !check.pode) && (
+        <LimitePlanoAlert
+          tenant={tenant}
+          motivo={erroBloqueio ?? check.motivo ?? 'Limite atingido.'}
+        />
       )}
 
       {/* Progresso Global */}

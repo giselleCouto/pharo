@@ -1,9 +1,11 @@
 import { NavLink, Link } from 'react-router-dom';
 import { ROUTE_PATHS } from '@/lib/types';
-import { Anchor, Settings, Zap, BarChart3, Ship, Home, Crown, LogOut, User, AlertTriangle } from 'lucide-react';
+import { Settings, Zap, BarChart3, Home, Crown, LogOut, AlertTriangle } from 'lucide-react';
+import { PharosLogo } from '@/components/PharosLogo';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useTenant';
-import { PLANOS, percentualUso, podeOtimizar, formatarPreco } from '@/lib/tenant';
+import { PLANOS, percentualUso, podeOtimizar, formatarPreco, isPlanoDemo } from '@/lib/tenant';
+import { DEMO_LIMITE_OTIMIZACOES } from '@/lib/demoAccount';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -19,23 +21,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const plano = tenant ? PLANOS[tenant.plano_id] : null;
+  const demo = tenant ? isPlanoDemo(tenant) : false;
   const pct = tenant ? percentualUso(tenant) : 0;
   const check = tenant ? podeOtimizar(tenant) : { pode: true, restam: 0 };
   const usoAtual = tenant?.uso_mensal.otimizacoes_usadas ?? 0;
   const limiteTotal = plano?.limite_otimizacoes_mes ?? 0;
+  const labelUso = demo ? 'planos demo' : 'runs';
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Alerta de limite */}
       {!check.pode && (
-        <div className="bg-warning/15 border-b border-warning/30 px-6 py-2 flex items-center justify-between text-xs">
+        <div className="bg-warning/15 border-b border-warning/30 px-6 py-2 flex items-center justify-between text-xs gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-warning">
-            <AlertTriangle className="w-3.5 h-3.5" />
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span>{check.motivo}</span>
           </div>
-          <Link to={ROUTE_PATHS.PLANOS} className="underline text-warning hover:text-warning/80 font-semibold">
-            Ver planos →
-          </Link>
+          <div className="flex gap-3 shrink-0">
+            {demo && (
+              <Link to={ROUTE_PATHS.AUTH} state={{ modo: 'REGISTRO' }} className="underline text-warning hover:text-warning/80 font-semibold">
+                Criar conta →
+              </Link>
+            )}
+            <Link to={ROUTE_PATHS.PLANOS} className="underline text-warning hover:text-warning/80 font-semibold">
+              {demo ? 'Ver planos →' : 'Fazer upgrade →'}
+            </Link>
+          </div>
         </div>
       )}
       {check.pode && pct > 80 && (
@@ -52,14 +63,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         style={{ boxShadow: '0 1px 20px -4px color-mix(in srgb, var(--primary) 20%, transparent)' }}>
         <div className="flex items-center gap-3 px-6 py-3">
           {/* Logo */}
-          <Link to={ROUTE_PATHS.LANDING} className="flex items-center gap-2 mr-3 hover:opacity-80 transition-opacity">
-            <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-              <Ship className="w-5 h-5 text-primary" />
-            </div>
-            <div className="hidden sm:block">
-              <div className="font-bold text-sm leading-tight font-mono text-primary">PHAROS</div>
-              <div className="text-[10px] text-muted-foreground leading-tight">Otimizador de cabotagem v3.3</div>
-            </div>
+          <Link to={ROUTE_PATHS.LANDING} className="flex items-center mr-3 hover:opacity-90 transition-opacity shrink-0">
+            <PharosLogo variant="icon" iconClassName="h-9 w-9 sm:hidden" />
+            <PharosLogo variant="full" fullClassName="h-9 hidden sm:block" />
           </Link>
 
           <div className="w-px h-8 bg-border" />
@@ -92,10 +98,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             {/* Barra de uso */}
             {plano && limiteTotal > 0 && (
-              <Link to={ROUTE_PATHS.PLANOS} className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors group">
+              <Link
+                to={demo && !check.pode ? ROUTE_PATHS.AUTH : ROUTE_PATHS.PLANOS}
+                state={demo && !check.pode ? { modo: 'REGISTRO' } : undefined}
+                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors group"
+              >
                 <div className="text-right">
                   <div className="text-[10px] text-muted-foreground font-mono leading-tight">
-                    {usoAtual}/{limiteTotal} runs
+                    {usoAtual}/{limiteTotal} {labelUso}
+                    {demo && check.pode && ` · ${check.restam} restante${check.restam !== 1 ? 's' : ''}`}
                   </div>
                   <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden mt-0.5">
                     <div
@@ -154,10 +165,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <Badge variant="outline" className="text-[9px] mt-1 py-0">{user?.role}</Badge>
                   </div>
 
+                  {demo && !check.pode && (
+                    <Link to={ROUTE_PATHS.AUTH}
+                      state={{ modo: 'REGISTRO' }}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-primary font-medium">
+                      <Crown className="w-4 h-4" /> Criar conta e assinar
+                    </Link>
+                  )}
                   <Link to={ROUTE_PATHS.PLANOS}
                     onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                    <Crown className="w-4 h-4" /> Planos e assinatura
+                    <Crown className="w-4 h-4" /> {demo ? 'Ver planos pagos' : 'Planos e assinatura'}
                   </Link>
 
                   <Link to={ROUTE_PATHS.CONFIGURACAO}

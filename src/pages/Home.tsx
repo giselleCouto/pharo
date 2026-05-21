@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ROUTE_PATHS } from '@/lib/types';
 import { Ship, Settings, Zap, BarChart3, Anchor, ArrowRight, Package, MapPin } from 'lucide-react';
+import { PharosLogo } from '@/components/PharosLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
@@ -53,16 +54,11 @@ export default function HomePage() {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="max-w-3xl"
         >
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20"
-              style={{ boxShadow: '0 0 30px -4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-              <Ship className="w-10 h-10 text-primary" />
-            </div>
+          <div className="flex items-center justify-center mb-6">
+            <PharosLogo variant="full" fullClassName="h-14 md:h-16" />
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-            <span className="text-primary">Pharos</span>
-          </h1>
+          <h1 className="sr-only">Pharos</h1>
           <p className="text-lg text-muted-foreground mb-2 max-w-2xl mx-auto">
             Otimizador de cabotagem — v3.3
           </p>

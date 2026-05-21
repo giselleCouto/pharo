@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTenantStore } from '@/hooks/useTenant';
 import { PLANOS, PlanoId, formatarPreco } from '@/lib/tenant';
 import { ROUTE_PATHS } from '@/lib/types';
@@ -7,16 +7,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Ship, Eye, EyeOff, Building2, Mail, Lock, User, Briefcase,
-  CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Anchor, Crown
+  Eye, EyeOff, Building2, Mail, Lock, User, Briefcase,
+  CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Crown
 } from 'lucide-react';
+import { PharosLogo } from '@/components/PharosLogo';
 import { cn } from '@/lib/utils';
 import {
   ensureDemoAccount,
   DEMO_TENANT_ID,
   DEMO_EMAIL,
   DEMO_SENHA,
+  DEMO_LIMITE_OTIMIZACOES,
+  getDemoTenant,
 } from '@/lib/demoAccount';
+import { PLANOS } from '@/lib/tenant';
 
 type Modo = 'LOGIN' | 'REGISTRO';
 type EtapaRegistro = 1 | 2 | 3;
@@ -25,9 +29,18 @@ const PLANOS_REGISTRO: PlanoId[] = ['STARTER', 'PROFISSIONAL', 'ENTERPRISE'];
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, registrar, erro, limparErro } = useTenantStore();
 
   const [modo, setModo] = useState<Modo>('LOGIN');
+
+  useEffect(() => {
+    const state = location.state as { modo?: Modo } | null;
+    if (state?.modo === 'REGISTRO') {
+      setModo('REGISTRO');
+      setMsgErro('');
+    }
+  }, [location.state]);
   const [etapa, setEtapa] = useState<EtapaRegistro>(1);
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,8 +82,13 @@ export default function AuthPage() {
     setLoading(true);
     const { ok, mensagem } = login(DEMO_TENANT_ID, DEMO_EMAIL, DEMO_SENHA);
     setLoading(false);
-    if (ok) navigate(ROUTE_PATHS.CONFIGURACAO);
-    else setMsgErro(mensagem);
+    if (ok) {
+      const fresh = getDemoTenant();
+      if (fresh) useTenantStore.setState({ tenant: fresh });
+      navigate(ROUTE_PATHS.CONFIGURACAO);
+    } else {
+      setMsgErro(mensagem);
+    }
   }
 
   function handleRegistro(e: React.FormEvent) {
@@ -122,15 +140,8 @@ export default function AuthPage() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/20 border border-blue-400/30">
-              <Ship className="w-6 h-6 text-blue-400" />
-            </div>
-            <div>
-              <div className="font-bold text-white font-mono text-lg tracking-widest">PHAROS</div>
-              <div className="text-blue-300/70 text-xs font-mono">Otimizador de cabotagem v3.3</div>
-            </div>
-          </div>
+          <PharosLogo variant="full" fullClassName="h-11" />
+          <p className="text-blue-300/70 text-xs font-mono mt-2">Otimizador de cabotagem v3.3</p>
         </div>
 
         {/* Conteúdo central */}
@@ -173,9 +184,8 @@ export default function AuthPage() {
 
           {/* Header */}
           <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-4 lg:hidden">
-              <Ship className="w-6 h-6 text-primary" />
-              <span className="font-bold text-primary font-mono">PHAROS</span>
+            <div className="flex justify-center mb-4 lg:hidden">
+              <PharosLogo variant="full" fullClassName="h-10" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">
               {modo === 'LOGIN' ? 'Acessar plataforma' : 'Criar conta gratuita'}
@@ -269,7 +279,11 @@ export default function AuthPage() {
 
               {/* Demo rápido */}
               <div className="p-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-                <p className="font-semibold text-foreground mb-1">🎯 Conta demo disponível:</p>
+                <p className="font-semibold text-foreground mb-1">🎯 Conta demo ({PLANOS.DEMO.nome})</p>
+                <p className="mb-2 text-[11px]">
+                  Limite: <strong className="text-foreground">{DEMO_LIMITE_OTIMIZACOES} planos de cabotagem</strong>{' '}
+                  (cada execução gera 4 cenários). Depois disso, crie uma conta e assine um plano.
+                </p>
                 <p>ID: <code className="bg-muted px-1 rounded">demo-pharos</code></p>
                 <p>E-mail: <code className="bg-muted px-1 rounded">demo@pharos.app</code></p>
                 <p>Senha: <code className="bg-muted px-1 rounded">demo123</code></p>

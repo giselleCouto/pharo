@@ -4,12 +4,13 @@ import { PLANOS, formatarPreco } from '@/lib/tenant';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Ship, Anchor, BarChart3, Zap, Shield, Settings, ArrowRight,
+  BarChart3, Zap, Shield, Settings, ArrowRight,
   CheckCircle, TrendingDown, Clock, Globe, Crown, Star,
   Fuel, Package, Navigation, ChevronRight, Waves, Wind,
   DollarSign, Activity, Lock, Users, Code2, LayoutDashboard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PharosLogo } from '@/components/PharosLogo';
 
 // ─── Mini Gantt Demo ───────────────────────────────────────────
 function MiniGantt() {
@@ -219,12 +220,7 @@ export default function LandingPage() {
       ══════════════════════════════════════════════════════ */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800/80 backdrop-blur-xl bg-slate-950/80">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30">
-              <Anchor className="w-5 h-5 text-blue-400" />
-            </div>
-            <span className="font-bold text-white font-mono tracking-widest text-sm">PHAROS</span>
-          </div>
+          <PharosLogo variant="full" fullClassName="h-8" />
           <div className="hidden md:flex items-center gap-6 text-sm text-slate-400">
             {['Funcionalidades', 'Resultados', 'Tecnologia', 'Planos'].map(l => (
               <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-white transition-colors">{l}</a>
@@ -716,9 +712,8 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950" />
         </div>
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-6">
-          <div className="flex justify-center gap-3 mb-4">
-            <Anchor className="w-8 h-8 text-blue-400" />
-            <Waves className="w-8 h-8 text-cyan-400" />
+          <div className="flex justify-center mb-4">
+            <PharosLogo variant="icon" iconClassName="h-14 w-14" />
           </div>
           <h2 className="text-4xl lg:text-5xl font-black text-white leading-tight">
             Pronto para otimizar<br />
@@ -749,7 +744,7 @@ export default function LandingPage() {
       <footer className="border-t border-slate-800/50 py-10 bg-slate-950">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm">
           <div className="flex items-center gap-2">
-            <Anchor className="w-4 h-4 text-blue-500/50" />
+            <PharosLogo variant="icon" iconClassName="h-5 w-5 opacity-70" />
             <span className="font-mono">Pharos v3.3 · Multitenant SaaS · 2026</span>
           </div>
           <div className="flex gap-6">

@@ -9,7 +9,7 @@
 // Preço mínimo por run = R$ 18 / (1 - 0.60) = R$ 45
 // Preços abaixo consideram volume e elasticidade de mercado
 
-export type PlanoId = 'STARTER' | 'PROFISSIONAL' | 'ENTERPRISE' | 'CUSTOM';
+export type PlanoId = 'DEMO' | 'STARTER' | 'PROFISSIONAL' | 'ENTERPRISE' | 'CUSTOM';
 
 export interface Plano {
   id: PlanoId;
@@ -34,6 +34,27 @@ export interface Plano {
 }
 
 export const PLANOS: Record<PlanoId, Plano> = {
+  DEMO: {
+    id: 'DEMO',
+    nome: 'Demonstração',
+    descricao: 'Avaliação gratuita — uso limitado para testar o Pharos',
+    preco_mensal_brl: 0,
+    preco_anual_brl: 0,
+    limite_otimizacoes_mes: 2,
+    limite_usuarios: 1,
+    limite_portos: 5,
+    limite_navios: 3,
+    suporte: 'Somente demo',
+    sla_horas: 0,
+    customizacao_modelo: false,
+    integracao_api: false,
+    relatorios_avancados: false,
+    historico_meses: 1,
+    cor: '#64748b',
+    destaque: false,
+    custo_infra_estimado_brl: 0,
+    margem_pct: 0,
+  },
   STARTER: {
     id: 'STARTER',
     nome: 'Starter',
@@ -181,13 +202,17 @@ export function podeOtimizar(tenant: Tenant): { pode: boolean; motivo?: string; 
   const usadas = tenant.uso_mensal.otimizacoes_usadas;
   const restam = plano.limite_otimizacoes_mes - usadas;
   if (restam <= 0) {
-    return {
-      pode: false,
-      motivo: `Limite de ${plano.limite_otimizacoes_mes} otimizações/mês atingido. Faça upgrade.`,
-      restam: 0,
-    };
+    const motivo =
+      tenant.plano_id === 'DEMO'
+        ? `Limite da demonstração atingido (${plano.limite_otimizacoes_mes} planos de cabotagem). Crie uma conta e assine um plano para gerar novas otimizações.`
+        : `Limite de ${plano.limite_otimizacoes_mes} otimizações/mês atingido. Faça upgrade do seu plano.`;
+    return { pode: false, motivo, restam: 0 };
   }
   return { pode: true, restam };
+}
+
+export function isPlanoDemo(tenant: Tenant): boolean {
+  return tenant.plano_id === 'DEMO';
 }
 
 /** Gera um ID de tenant a partir do nome da empresa */
