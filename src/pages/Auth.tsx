@@ -108,8 +108,8 @@ export default function AuthPage() {
               <Ship className="w-6 h-6 text-blue-400" />
             </div>
             <div>
-              <div className="font-bold text-white font-mono text-lg tracking-widest">CABOTAGEM</div>
-              <div className="text-blue-300/70 text-xs font-mono">Otimizador de Rotas v2.0</div>
+              <div className="font-bold text-white font-mono text-lg tracking-widest">PHAROS</div>
+              <div className="text-blue-300/70 text-xs font-mono">Otimizador de cabotagem v3.3</div>
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function AuthPage() {
             </h2>
             <p className="text-blue-200/70 mt-3 text-sm leading-relaxed">
               Algoritmo Inteligente multiparamétrico com 4 cenários simultâneos.
-              Integração com qualquer cloud (AWS, Azure, GCP, Oracle). Heurística v2.0 de produção.
+              Integração com qualquer cloud (AWS, Azure, GCP, Oracle). Heurística Pharos v3.3 de produção.
             </p>
           </div>
 
@@ -144,7 +144,7 @@ export default function AuthPage() {
         </div>
 
         <div className="relative z-10 text-blue-300/40 text-xs font-mono">
-          © 2026 CabotagemOpt · Multitenant SaaS
+          © 2026 Pharos · Multitenant SaaS
         </div>
       </div>
 
@@ -156,7 +156,7 @@ export default function AuthPage() {
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-4 lg:hidden">
               <Ship className="w-6 h-6 text-primary" />
-              <span className="font-bold text-primary font-mono">CABOTAGEM OPT</span>
+              <span className="font-bold text-primary font-mono">PHAROS</span>
             </div>
             <h1 className="text-2xl font-bold text-foreground">
               {modo === 'LOGIN' ? 'Acessar plataforma' : 'Criar conta gratuita'}
@@ -251,14 +251,14 @@ export default function AuthPage() {
               {/* Demo rápido */}
               <div className="p-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                 <p className="font-semibold text-foreground mb-1">🎯 Conta demo disponível:</p>
-                <p>ID: <code className="bg-muted px-1 rounded">demo-cabotagem</code></p>
-                <p>E-mail: <code className="bg-muted px-1 rounded">demo@cabotagem.com</code></p>
+                <p>ID: <code className="bg-muted px-1 rounded">demo-pharos</code></p>
+                <p>E-mail: <code className="bg-muted px-1 rounded">demo@pharos.app</code></p>
                 <p>Senha: <code className="bg-muted px-1 rounded">demo123</code></p>
                 <Button size="sm" variant="outline" className="mt-2 w-full text-xs h-7"
                   type="button"
                   onClick={() => {
-                    setLoginTenantId('demo-cabotagem');
-                    setLoginEmail('demo@cabotagem.com');
+                    setLoginTenantId('demo-pharos');
+                    setLoginEmail('demo@pharos.app');
                     setLoginSenha('demo123');
                   }}>
                   Preencher com demo

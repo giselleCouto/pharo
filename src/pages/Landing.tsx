@@ -223,7 +223,7 @@ export default function LandingPage() {
             <div className="p-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30">
               <Anchor className="w-5 h-5 text-blue-400" />
             </div>
-            <span className="font-bold text-white font-mono tracking-widest text-sm">CABOTAGEM<span className="text-blue-400">OPT</span></span>
+            <span className="font-bold text-white font-mono tracking-widest text-sm">PHAROS</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm text-slate-400">
             {['Funcionalidades', 'Resultados', 'Tecnologia', 'Planos'].map(l => (
@@ -275,7 +275,7 @@ export default function LandingPage() {
           <div className="space-y-6">
             <div className="flex items-center gap-2">
               <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 gap-1.5 px-3 py-1">
-                <Activity className="w-3 h-3" /> v2.0 · Produção
+                <Activity className="w-3 h-3" /> v3.3 · Produção
               </Badge>
               <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 gap-1.5 px-3 py-1">
                 <Shield className="w-3 h-3" /> Multitenant
@@ -293,7 +293,7 @@ export default function LandingPage() {
             <p className="text-lg text-slate-300 leading-relaxed max-w-lg">
               Algoritmo Inteligente com <strong className="text-white">4 cenários simultâneos</strong> — Otimista, Base, Conservador e
               Custo Mínimo. Compatível com <strong className="text-white">AWS S3, Azure Blob, GCP Storage e Oracle OCI</strong>.
-              Heurística de produção v2.0 com fracionamento de demandas e rotação de frota TC.
+              Heurística Pharos v3.3 com fracionamento de demandas e rotação de frota TC.
             </p>
 
             {/* Stats rápidas */}
@@ -378,7 +378,7 @@ export default function LandingPage() {
               cor: '#3b82f6',
               titulo: 'Algoritmo Inteligente Multi-cenário',
               desc: '4 cenários simultâneos: Otimista (máx capacidade), Base (balanceado), Conservador (risco mínimo) e Custo Mínimo (foco em bunker). Cada um com parâmetros distintos de ocupação, rotação e janelas.',
-              tags: ['Heurística v2.0', 'Paralelo', 'IA Avançada'],
+              tags: ['Heurística v3.3', 'Paralelo', 'IA Avançada'],
             },
             {
               icon: Fuel,
@@ -750,7 +750,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm">
           <div className="flex items-center gap-2">
             <Anchor className="w-4 h-4 text-blue-500/50" />
-            <span className="font-mono">CabotagemOpt v2.0 · Multitenant SaaS · 2026</span>
+            <span className="font-mono">Pharos v3.3 · Multitenant SaaS · 2026</span>
           </div>
           <div className="flex gap-6">
             {['Planos', 'Privacidade', 'Termos', 'Suporte'].map(l => (

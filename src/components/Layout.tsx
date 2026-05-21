@@ -57,8 +57,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Ship className="w-5 h-5 text-primary" />
             </div>
             <div className="hidden sm:block">
-              <div className="font-bold text-sm leading-tight font-mono text-primary">CABOTAGEM</div>
-              <div className="text-[10px] text-muted-foreground leading-tight">Otimizador de Rotas v2.0</div>
+              <div className="font-bold text-sm leading-tight font-mono text-primary">PHAROS</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">Otimizador de cabotagem v3.3</div>
             </div>
           </Link>
 

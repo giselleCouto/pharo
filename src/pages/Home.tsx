@@ -61,11 +61,10 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-            Otimizador de Rotas de{' '}
-            <span className="text-primary">Cabotagem</span>
+            <span className="text-primary">Pharos</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-2 max-w-2xl mx-auto">
-            Módulo de Adaptação para Modelo de Otimização — Produção v2.0
+            Otimizador de cabotagem — v3.3
           </p>
           <p className="text-sm text-muted-foreground mb-10 max-w-2xl mx-auto">
             Calcule cenários de roteirização multi-porto com navios TC e SPOT, respeitando

@@ -1,6 +1,6 @@
 /**
  * ══════════════════════════════════════════════════════════════════════════
- *  MOTOR DE MARÉ — CABOTAGEM OTIMIZADOR (TypeScript / browser)
+ *  MOTOR DE MARÉ — PHAROS (TypeScript / browser)
  *  Espelho do tide_engine.py — roda 100% client-side sem API key
  * ══════════════════════════════════════════════════════════════════════════
  *

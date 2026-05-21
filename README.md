@@ -1,6 +1,6 @@
-# Cabotagem Otimizador v3.3
+# Pharos
 
-Sistema de suporte à decisão (DSS) para planejamento de rotas multi-porto e gestão de frota de cabotagem, com horizonte de planejamento de até dois meses. Integra restrições operacionais (calado, maré, janelas de ressuprimento, segregação de produtos) e modelos de custo (bunker, TC, SPOT, demurrage).
+Sistema de suporte à decisão (DSS) para planejamento de rotas multi-porto e gestão de frota de cabotagem (v3.3), com horizonte de planejamento de até dois meses. Integra restrições operacionais (calado, maré, janelas de ressuprimento, segregação de produtos) e modelos de custo (bunker, TC, SPOT, demurrage).
 
 ## Stack tecnológica
 

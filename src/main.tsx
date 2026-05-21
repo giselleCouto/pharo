@@ -6,7 +6,7 @@ import './index.css'
 // Não usa o store Zustand — escreve direto no localStorage para
 // garantir que o usuário demo exista antes do primeiro login.
 function seedDemoAccount() {
-  const DEMO_TENANT_ID = 'demo-cabotagem';
+  const DEMO_TENANT_ID = 'demo-pharos';
   const REGISTRY_KEY   = 'cab_tenant_registry';
 
   // Verifica se já existe
@@ -24,7 +24,7 @@ function seedDemoAccount() {
 
   const demoTenant = {
     id: DEMO_TENANT_ID,
-    nome_empresa: 'Demo Cabotagem',
+    nome_empresa: 'Demo Pharos',
     plano_id: 'PROFISSIONAL',
     plano_ativo: true,
     data_inicio: agora,
@@ -39,7 +39,7 @@ function seedDemoAccount() {
       {
         id: 'usr_demo_001',
         nome: 'Usuário Demo',
-        email: 'demo@cabotagem.com',
+        email: 'demo@pharos.app',
         cargo: 'Analista de Logística',
         avatar_initials: 'UD',
         role: 'ADMIN',
@@ -60,12 +60,12 @@ function seedDemoAccount() {
     localStorage.setItem(REGISTRY_KEY, JSON.stringify(lista));
 
     // Salva credencial
-    const credKey = `cab_cred_${DEMO_TENANT_ID}_demo@cabotagem.com`;
+    const credKey = `cab_cred_${DEMO_TENANT_ID}_demo@pharos.app`;
     localStorage.setItem(credKey, senhaHash);
 
-    console.info('[CabotagemOpt] Conta demo criada com sucesso.');
+    console.info('[Pharos] Conta demo criada com sucesso.');
   } catch (e) {
-    console.warn('[CabotagemOpt] Falha ao criar conta demo:', e);
+    console.warn('[Pharos] Falha ao criar conta demo:', e);
   }
 }
 

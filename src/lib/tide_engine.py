@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║        MÓDULO DE PREVISÃO DE MARÉS + CALADO DISPONÍVEL                      ║
-║        Cabotagem Otimizador — v1.0  (2026-03-29)                            ║
+║        Pharos — Motor de Marés (2026-03-29)                                ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  Fontes suportadas (em ordem de prioridade):                                ║
 ║    1. WorldTides API  — cobertura global, previsão de até 1 ano             ║
@@ -365,7 +365,7 @@ def buscar_mare_noaa(
     url = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
     params = {
         "product": "predictions",
-        "application": "cabotagem_otimizador",
+        "application": "pharos",
         "begin_date": data_inicio.replace("-", ""),
         "end_date": fim.replace("-", ""),
         "datum": "MLLW",
@@ -816,7 +816,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 
     print("=" * 70)
-    print("MÓDULO DE PREVISÃO DE MARÉS — CABOTAGEM OTIMIZADOR")
+    print("MÓDULO DE PREVISÃO DE MARÉS — PHAROS")
     print("=" * 70)
 
     # ── Teste 1: previsão harmônica local ─────────────────────────

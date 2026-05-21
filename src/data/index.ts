@@ -8,7 +8,7 @@ import {
 } from '@/lib/types';
 
 // ═══════════════════════════════════════════════════════════════
-// DADOS MOCK PADRÃO — CABOTAGEM OTIMIZADOR v3.1
+// DADOS MOCK PADRÃO — PHAROS v3.3
 // ═══════════════════════════════════════════════════════════════
 
 export const PORTOS_DEFAULT: Porto[] = [
