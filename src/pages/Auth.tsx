@@ -20,7 +20,6 @@ import {
   DEMO_LIMITE_OTIMIZACOES,
   getDemoTenant,
 } from '@/lib/demoAccount';
-import { PLANOS } from '@/lib/tenant';
 
 type Modo = 'LOGIN' | 'REGISTRO';
 type EtapaRegistro = 1 | 2 | 3;
