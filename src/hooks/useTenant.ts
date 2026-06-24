@@ -3,8 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   Tenant, TenantUser, Sessao, PlanoId, PLANOS,
   tenantKey, gerarTenantId, gerarToken, iniciais,
-  verificarResetMensal, podeOtimizar,
+  verificarResetMensal, podeOtimizar, buscarTenantsPorEmail,
+  registrarConsumoOtimizacao,
 } from '@/lib/tenant';
+import { salvarConfiguracaoInicialTenant } from '@/lib/trialConfig';
 
 // ─── Tipos do Store ────────────────────────────────────────────
 
@@ -29,6 +31,7 @@ interface TenantStore {
   }) => { ok: boolean; mensagem: string };
 
   login: (tenantId: string, email: string, senha: string) => { ok: boolean; mensagem: string };
+  loginPorEmail: (email: string, senha: string, tenantIdOpcional?: string) => { ok: boolean; mensagem: string };
   logout: () => void;
   limparErro: () => void;
 
@@ -90,21 +93,31 @@ export const useTenantStore = create<TenantStore>()(
       // ── Registrar novo tenant ──────────────────────────────
       registrar: ({ nomeEmpresa, cnpj, nomeUsuario, email, cargo, senha, plano_id, cobranca_anual }) => {
         const tenantId = gerarTenantId(nomeEmpresa);
+        const emailNorm = email.trim().toLowerCase();
 
-        // Verifica duplicidade
+        if (buscarTenantsPorEmail(emailNorm).length > 0) {
+          return { ok: false, mensagem: 'Este e-mail já está cadastrado. Use Entrar com seu e-mail e senha.' };
+        }
+
+        // Verifica duplicidade de empresa
         if (buscarTenant(tenantId)) {
-          return { ok: false, mensagem: `Empresa "${nomeEmpresa}" já cadastrada. Use o login.` };
+          return { ok: false, mensagem: `Empresa "${nomeEmpresa}" já cadastrada. Use o login com seu e-mail.` };
         }
 
         const userId = `usr_${Date.now()}`;
         const agora = new Date().toISOString();
         const vencimento = new Date();
-        vencimento.setMonth(vencimento.getMonth() + 1);
+        const planoEfetivo = plano_id ?? 'TRIAL';
+        if (planoEfetivo === 'TRIAL') {
+          vencimento.setDate(vencimento.getDate() + 14);
+        } else {
+          vencimento.setMonth(vencimento.getMonth() + 1);
+        }
 
         const adminUser: TenantUser = {
           id: userId,
           nome: nomeUsuario,
-          email: email.toLowerCase(),
+          email: emailNorm,
           cargo,
           avatar_initials: iniciais(nomeUsuario),
           role: 'ADMIN',
@@ -115,7 +128,7 @@ export const useTenantStore = create<TenantStore>()(
           id: tenantId,
           nome_empresa: nomeEmpresa,
           cnpj,
-          plano_id,
+          plano_id: planoEfetivo,
           plano_ativo: true,
           data_inicio: agora,
           data_vencimento: vencimento.toISOString(),
@@ -128,11 +141,10 @@ export const useTenantStore = create<TenantStore>()(
           usuarios: [adminUser],
         };
 
-        // Persiste
         salvarTenant(novoTenant);
-        salvarCredencial(tenantId, email, senha);
+        salvarCredencial(tenantId, emailNorm, senha);
+        salvarConfiguracaoInicialTenant(tenantId);
 
-        // Cria sessão
         const sessao: Sessao = {
           tenant_id: tenantId,
           user_id: userId,
@@ -141,8 +153,35 @@ export const useTenantStore = create<TenantStore>()(
           expira_em: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
         };
 
-        set({ tenant: novoTenant, sessao, erro: null });
-        return { ok: true, mensagem: 'Conta criada com sucesso!' };
+        set({ tenant: novoTenant, sessao, erro: null, _hasHydrated: true });
+        return { ok: true, mensagem: `Conta criada! Seu ID de empresa é "${tenantId}" (guarde para referência).` };
+      },
+
+      loginPorEmail: (email, senha, tenantIdOpcional) => {
+        const emailNorm = email.trim().toLowerCase();
+        const idOpcional = tenantIdOpcional?.trim().toLowerCase();
+
+        if (idOpcional) {
+          return get().login(idOpcional, emailNorm, senha);
+        }
+
+        const candidatos = buscarTenantsPorEmail(emailNorm);
+        if (candidatos.length === 0) {
+          return { ok: false, mensagem: 'E-mail não encontrado. Crie sua conta gratuita para começar.' };
+        }
+
+        const validos = candidatos.filter((t) => verificarCredencial(t.id, emailNorm, senha));
+        if (validos.length === 0) {
+          return { ok: false, mensagem: 'Senha incorreta.' };
+        }
+        if (validos.length > 1) {
+          return {
+            ok: false,
+            mensagem: 'Este e-mail está em mais de uma empresa. Informe o ID da empresa no campo opcional.',
+          };
+        }
+
+        return get().login(validos[0].id, emailNorm, senha);
       },
 
       // ── Login ──────────────────────────────────────────────
@@ -196,12 +235,7 @@ export const useTenantStore = create<TenantStore>()(
         const check = podeOtimizar(tenant);
         if (!check.pode) return check;
 
-        const usoAtualizado = {
-          ...tenant.uso_mensal,
-          otimizacoes_usadas: tenant.uso_mensal.otimizacoes_usadas + 1,
-        };
-        const tenantAtualizado = { ...tenant, uso_mensal: usoAtualizado };
-
+        const tenantAtualizado = registrarConsumoOtimizacao(tenant);
         salvarTenant(tenantAtualizado);
         set({ tenant: tenantAtualizado });
 
@@ -297,7 +331,7 @@ export const useTenantStore = create<TenantStore>()(
 
 // ─── Hook de conveniência ──────────────────────────────────────
 export function useAuth() {
-  const { sessao, tenant, erro, login, logout, registrar, limparErro } = useTenantStore();
+  const { sessao, tenant, erro, login, loginPorEmail, logout, registrar, limparErro } = useTenantStore();
   const user = tenant?.usuarios.find(u => u.id === sessao?.user_id);
-  return { sessao, tenant, user, erro, isAutenticado: !!sessao && !!tenant, login, logout, registrar, limparErro };
+  return { sessao, tenant, user, erro, isAutenticado: !!sessao && !!tenant, login, loginPorEmail, logout, registrar, limparErro };
 }

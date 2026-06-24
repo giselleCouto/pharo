@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, Crown, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ROUTE_PATHS } from '@/lib/types';
-import { isPlanoDemo } from '@/lib/tenant';
+import { isPlanoDemo, isPlanoTrial } from '@/lib/tenant';
 import type { Tenant } from '@/lib/tenant';
 
 interface LimitePlanoAlertProps {
@@ -14,6 +14,7 @@ interface LimitePlanoAlertProps {
 export function LimitePlanoAlert({ tenant, motivo, className = '' }: LimitePlanoAlertProps) {
   const navigate = useNavigate();
   const demo = isPlanoDemo(tenant);
+  const trial = isPlanoTrial(tenant);
 
   return (
     <div
@@ -32,7 +33,7 @@ export function LimitePlanoAlert({ tenant, motivo, className = '' }: LimitePlano
               onClick={() => navigate(ROUTE_PATHS.AUTH, { state: { modo: 'REGISTRO' } })}
             >
               <UserPlus className="w-3.5 h-3.5" />
-              Criar conta
+              Criar conta gratuita
             </Button>
             <Link to={ROUTE_PATHS.PLANOS}>
               <Button
@@ -45,6 +46,16 @@ export function LimitePlanoAlert({ tenant, motivo, className = '' }: LimitePlano
               </Button>
             </Link>
           </>
+        ) : trial ? (
+          <Link to={ROUTE_PATHS.PLANOS}>
+            <Button
+              size="sm"
+              className="gap-1.5 bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              Assinar plano
+            </Button>
+          </Link>
         ) : (
           <Link to={ROUTE_PATHS.PLANOS}>
             <Button

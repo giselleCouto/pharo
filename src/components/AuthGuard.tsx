@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useTenant';
 import { ROUTE_PATHS } from '@/lib/types';
 import { useTenantStore } from '@/hooks/useTenant';
-import { PLANOS, formatarPreco, podeOtimizar } from '@/lib/tenant';
+import { PLANOS, formatarPreco, podeOtimizar, otimizacoesUsadas } from '@/lib/tenant';
 
 // ─── AuthGuard ─────────────────────────────────────────────────
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -39,7 +39,7 @@ export function useTenantInfo() {
     tenant,
     user,
     plano,
-    usoAtual: tenant.uso_mensal.otimizacoes_usadas,
+    usoAtual: otimizacoesUsadas(tenant),
     limiteTotal: plano.limite_otimizacoes_mes,
     restam: check.restam,
     podeProsseguir: check.pode,

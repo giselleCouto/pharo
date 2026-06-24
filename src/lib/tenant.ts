@@ -3,13 +3,15 @@
 // Cada tenant é completamente isolado: config, histórico e uso
 // ═══════════════════════════════════════════════════════════════
 
+import { podeDemoBrowser, getDemoUsoBrowser, incrementDemoUsoBrowser, DEMO_LIMITE_BROWSER } from './demoUsage';
+
 // ─── Planos de Assinatura ──────────────────────────────────────
 // Margem de lucro alvo: 60%
 // Custo estimado por run de otimização (infra + suporte): R$ 18
 // Preço mínimo por run = R$ 18 / (1 - 0.60) = R$ 45
 // Preços abaixo consideram volume e elasticidade de mercado
 
-export type PlanoId = 'DEMO' | 'STARTER' | 'PROFISSIONAL' | 'ENTERPRISE' | 'CUSTOM';
+export type PlanoId = 'DEMO' | 'TRIAL' | 'STARTER' | 'PROFISSIONAL' | 'ENTERPRISE' | 'CUSTOM';
 
 export interface Plano {
   id: PlanoId;
@@ -37,13 +39,13 @@ export const PLANOS: Record<PlanoId, Plano> = {
   DEMO: {
     id: 'DEMO',
     nome: 'Demonstração',
-    descricao: 'Avaliação gratuita — uso limitado para testar o Pharos',
+    descricao: 'Prévia rápida — conta compartilhada para conhecer o Pharos',
     preco_mensal_brl: 0,
     preco_anual_brl: 0,
-    limite_otimizacoes_mes: 2,
+    limite_otimizacoes_mes: 5,
     limite_usuarios: 1,
-    limite_portos: 5,
-    limite_navios: 3,
+    limite_portos: 0,
+    limite_navios: 0,
     suporte: 'Somente demo',
     sla_horas: 0,
     customizacao_modelo: false,
@@ -51,6 +53,27 @@ export const PLANOS: Record<PlanoId, Plano> = {
     relatorios_avancados: false,
     historico_meses: 1,
     cor: '#64748b',
+    destaque: false,
+    custo_infra_estimado_brl: 0,
+    margem_pct: 0,
+  },
+  TRIAL: {
+    id: 'TRIAL',
+    nome: 'Trial Gratuito',
+    descricao: '14 dias para simular cabotagem completa com seus dados',
+    preco_mensal_brl: 0,
+    preco_anual_brl: 0,
+    limite_otimizacoes_mes: 10,
+    limite_usuarios: 3,
+    limite_portos: 0,
+    limite_navios: 0,
+    suporte: 'E-mail',
+    sla_horas: 72,
+    customizacao_modelo: false,
+    integracao_api: false,
+    relatorios_avancados: true,
+    historico_meses: 1,
+    cor: '#22c55e',
     destaque: false,
     custo_infra_estimado_brl: 0,
     margem_pct: 0,
@@ -190,12 +213,45 @@ export function tenantKey(tenantId: string, key: string): string {
   return `cab_t_${tenantId}_${key}`;
 }
 
+/** Otimizações já consumidas (demo compartilhada usa contador por navegador). */
+export function otimizacoesUsadas(tenant: Tenant): number {
+  if (tenant.plano_id === 'DEMO') return getDemoUsoBrowser();
+  return tenant.uso_mensal.otimizacoes_usadas;
+}
+
 /** Verifica se o tenant pode executar mais otimizações este mês */
 export function podeOtimizar(tenant: Tenant): { pode: boolean; motivo?: string; restam: number } {
   const plano = PLANOS[tenant.plano_id];
+  if (!plano) {
+    return { pode: false, motivo: 'Plano inválido. Entre em contato com o suporte.', restam: 0 };
+  }
   if (!tenant.plano_ativo) {
     return { pode: false, motivo: 'Plano inativo. Renove sua assinatura.', restam: 0 };
   }
+
+  if (tenant.plano_id === 'TRIAL') {
+    const vencimento = new Date(tenant.data_vencimento);
+    if (vencimento < new Date()) {
+      return {
+        pode: false,
+        motivo: 'Seu trial de 14 dias expirou. Assine um plano para continuar otimizando.',
+        restam: 0,
+      };
+    }
+  }
+
+  if (tenant.plano_id === 'DEMO') {
+    const demo = podeDemoBrowser();
+    if (!demo.pode) {
+      return {
+        pode: false,
+        motivo: `Limite da demonstração atingido (${DEMO_LIMITE_BROWSER} simulações neste navegador). Crie sua conta gratuita com seu e-mail para continuar.`,
+        restam: 0,
+      };
+    }
+    return { pode: true, restam: demo.restam };
+  }
+
   if (plano.limite_otimizacoes_mes === 0) {
     return { pode: true, restam: 999999 };
   }
@@ -203,16 +259,53 @@ export function podeOtimizar(tenant: Tenant): { pode: boolean; motivo?: string; 
   const restam = plano.limite_otimizacoes_mes - usadas;
   if (restam <= 0) {
     const motivo =
-      tenant.plano_id === 'DEMO'
-        ? `Limite da demonstração atingido (${plano.limite_otimizacoes_mes} planos de cabotagem). Crie uma conta e assine um plano para gerar novas otimizações.`
+      tenant.plano_id === 'TRIAL'
+        ? `Limite do trial atingido (${plano.limite_otimizacoes_mes} simulações). Assine um plano para continuar.`
         : `Limite de ${plano.limite_otimizacoes_mes} otimizações/mês atingido. Faça upgrade do seu plano.`;
     return { pode: false, motivo, restam: 0 };
   }
   return { pode: true, restam };
 }
 
+/** Registra consumo de uma otimização (demo usa contador local por navegador). */
+export function registrarConsumoOtimizacao(tenant: Tenant): Tenant {
+  if (tenant.plano_id === 'DEMO') {
+    incrementDemoUsoBrowser();
+    return tenant;
+  }
+  return {
+    ...tenant,
+    uso_mensal: {
+      ...tenant.uso_mensal,
+      otimizacoes_usadas: tenant.uso_mensal.otimizacoes_usadas + 1,
+    },
+  };
+}
+
 export function isPlanoDemo(tenant: Tenant): boolean {
   return tenant.plano_id === 'DEMO';
+}
+
+export function isPlanoTrial(tenant: Tenant): boolean {
+  return tenant.plano_id === 'TRIAL';
+}
+
+export function isContaGratuita(tenant: Tenant): boolean {
+  return tenant.plano_id === 'DEMO' || tenant.plano_id === 'TRIAL';
+}
+
+/** Busca tenant que contém o e-mail informado. */
+export function buscarTenantsPorEmail(email: string): Tenant[] {
+  const emailNorm = email.trim().toLowerCase();
+  if (!emailNorm) return [];
+  try {
+    const raw = localStorage.getItem('cab_tenant_registry');
+    if (!raw) return [];
+    const lista = JSON.parse(raw) as Tenant[];
+    return lista.filter((t) => t.usuarios.some((u) => u.email === emailNorm));
+  } catch {
+    return [];
+  }
 }
 
 /** Gera um ID de tenant a partir do nome da empresa */
@@ -253,6 +346,6 @@ export function formatarPreco(valor: number): string {
 /** Percentual de uso */
 export function percentualUso(tenant: Tenant): number {
   const plano = PLANOS[tenant.plano_id];
-  if (plano.limite_otimizacoes_mes === 0) return 0;
-  return Math.min(100, (tenant.uso_mensal.otimizacoes_usadas / plano.limite_otimizacoes_mes) * 100);
+  if (!plano || plano.limite_otimizacoes_mes === 0) return 0;
+  return Math.min(100, (otimizacoesUsadas(tenant) / plano.limite_otimizacoes_mes) * 100);
 }

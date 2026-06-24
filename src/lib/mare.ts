@@ -1,4 +1,4 @@
-import type { PrevisaoMarePorto } from './types';
+import type { PrevisaoMarePorto, FonteCaladoMare } from './types';
 
 const UKC_PADRAO_M = 0.5;
 
@@ -36,7 +36,7 @@ function caladoDaPrevisao(p: PrevisaoMarePorto): number | undefined {
   return undefined;
 }
 
-export type FonteCaladoMare = 'catalogo' | 'mare';
+export type { FonteCaladoMare };
 
 export interface CaladoEfetivoPorto {
   calado_efetivo_m: number;

@@ -21,12 +21,23 @@ import {
   calcularCustoBunker,
   calcularCustoNavio,
   calcularDemurrageSpot,
+  calcularCustoReefer,
 } from './optimizer/costs';
 import {
   navioElegivelParaPorto,
   produtosCompativeis,
   resolverCaladoPlanejamento,
 } from './optimizer/constraints';
+import {
+  unidadeNavio,
+  unidadeDemanda,
+  capacidadeNavio,
+  quantidadeDemanda,
+  unidadeCompativel,
+  pesoDemanda,
+  teuReeferDemanda,
+  fracionarDemanda,
+} from './optimizer/cargo';
 
 // ═══════════════════════════════════════════════════════════════
 // FUNÇÕES AUXILIARES
@@ -174,13 +185,39 @@ export function executarOtimizacao(
       const dataAtual = disponibilidadeNavios[navioDisp.id];
       if (dataAtual > premissas.fim_periodo) break;
 
+      const unidade = unidadeNavio(navioDisp);
+      const capNavio = capacidadeNavio(navioDisp);
       const portosViagemRaw: string[] = [];
       const demandasViagem: Demanda[] = [];
-      let volumeAcumulado = 0;
-      const capMax = navioDisp.capacidade_cbm * (p.ocMax / 100);
+      let volumeAcumulado = 0;       // na unidade do navio (CBM ou TEU)
+      let pesoAcumulado = 0;          // toneladas
+      let teuReeferAcumulado = 0;     // TEU refrigerados
+      const capMax = capNavio * (p.ocMax / 100);
+      const capPeso = navioDisp.capacidade_peso_t ?? Infinity;
+      const slotsReefer = navioDisp.slots_reefer ?? Infinity;
+
+      const cabeNaCarga = (dem: Demanda, qtde: number): boolean => {
+        const fr = qtde / Math.max(quantidadeDemanda(dem), 1e-9);
+        const pesoExtra = pesoDemanda(dem) * fr;
+        const reeferExtra = teuReeferDemanda(dem) * fr;
+        if (pesoAcumulado + pesoExtra > capPeso + 1e-6) return false;
+        if (teuReeferAcumulado + reeferExtra > slotsReefer + 1e-6) return false;
+        return true;
+      };
+
+      const registrar = (dem: Demanda, qtde: number) => {
+        const fr = qtde / Math.max(quantidadeDemanda(dem), 1e-9);
+        const fracionada = fracionarDemanda(dem, qtde);
+        demandasViagem.push(fracionada);
+        volumeAcumulado += qtde;
+        pesoAcumulado += pesoDemanda(dem) * fr;
+        teuReeferAcumulado += teuReeferDemanda(dem) * fr;
+      };
 
       for (const dem of demandasRestantes) {
         if (demandasAtendidas.has(dem.id)) continue;
+        // Unidade de carga precisa casar (navio TEU ↔ demanda TEU)
+        if (!unidadeCompativel(navioDisp, dem)) continue;
         const portoInfo = portos.find((pt) => pt.id === dem.porto_destino_id);
         if (!portoInfo) continue;
 
@@ -200,23 +237,24 @@ export function executarOtimizacao(
           : [...demandasViagem, dem];
         if (!produtosCompativeis(candidatas)) continue;
 
+        const qtdeDemanda = quantidadeDemanda(dem);
+
         if (portosViagemRaw.includes(dem.porto_destino_id)) {
-          const volumePossivel = Math.min(dem.volume_cbm, capMax - volumeAcumulado);
-          if (volumePossivel > 0) {
-            demandasViagem.push({ ...dem, volume_cbm: volumePossivel });
-            volumeAcumulado += volumePossivel;
+          const qtdePossivel = Math.min(qtdeDemanda, capMax - volumeAcumulado);
+          if (qtdePossivel > 0 && cabeNaCarga(dem, qtdePossivel)) {
+            registrar(dem, qtdePossivel);
           }
           continue;
         }
 
         if (portosViagemRaw.length >= maxPortosEfetivo) break;
 
-        const volumePossivel = Math.min(dem.volume_cbm, capMax - volumeAcumulado);
-        if (volumePossivel <= 0) break;
+        const qtdePossivel = Math.min(qtdeDemanda, capMax - volumeAcumulado);
+        if (qtdePossivel <= 0) break;
+        if (!cabeNaCarga(dem, qtdePossivel)) continue;
 
         portosViagemRaw.push(dem.porto_destino_id);
-        demandasViagem.push({ ...dem, volume_cbm: volumePossivel });
-        volumeAcumulado += volumePossivel;
+        registrar(dem, qtdePossivel);
       }
 
       const portosViagem = otimizarSequenciaPortos(
@@ -231,8 +269,8 @@ export function executarOtimizacao(
         continue;
       }
 
-      // Verifica ocupação mínima
-      const ocupacaoPct = (volumeAcumulado / navioDisp.capacidade_cbm) * 100;
+      // Verifica ocupação mínima (na unidade do navio)
+      const ocupacaoPct = capNavio > 0 ? (volumeAcumulado / capNavio) * 100 : 0;
       if (ocupacaoPct < p.ocMin && tipo !== 'OTIMISTA') {
         disponibilidadeNavios[navioDisp.id] = addDias(dataAtual, 1);
         demandasRestantes = demandasOrdenadas.filter((d) => !demandasAtendidas.has(d.id));
@@ -270,18 +308,21 @@ export function executarOtimizacao(
         const demandasPorto = demandasViagem.filter(
           (d) => d.porto_destino_id === portoId
         );
-        const volPorto = demandasPorto.reduce((s, d) => s + d.volume_cbm, 0);
+        // demandasPorto já estão fracionadas (volume/teu/peso escalados)
+        const volPortoCbm = demandasPorto.reduce((s, d) => s + d.volume_cbm, 0);
+        const volPortoTeu = unidade === 'TEU'
+          ? demandasPorto.reduce((s, d) => s + quantidadeDemanda(d), 0)
+          : 0;
+        const pesoPorto = demandasPorto.reduce((s, d) => s + pesoDemanda(d), 0);
+        const teuReeferPorto = demandasPorto.reduce((s, d) => s + teuReeferDemanda(d), 0);
 
-        // Produtos detalhados
+        // Produtos detalhados (já escalados pelo fracionamento)
         const produtosDetalhados: ProdutoEntrega[] = [];
         const nomeProdutos: string[] = [];
         for (const dem of demandasPorto) {
           if (dem.produtos && dem.produtos.length > 0) {
             for (const prod of dem.produtos) {
-              // Proporcional ao fracionamento
-              const frac = dem.volume_cbm / (demandas.find(d => d.id === dem.id)?.volume_cbm || dem.volume_cbm);
-              const volFrac = Math.round(prod.volume_cbm * frac * 100) / 100;
-              produtosDetalhados.push({ ...prod, volume_cbm: volFrac });
+              produtosDetalhados.push({ ...prod });
               if (!nomeProdutos.includes(prod.nome)) nomeProdutos.push(prod.nome);
             }
           } else {
@@ -316,7 +357,7 @@ export function executarOtimizacao(
           porto_id: portoId,
           porto_nome: portoInfo.nome,
           ordem: i + 1,
-          volume_entregue_cbm: volPorto,
+          volume_entregue_cbm: volPortoCbm,
           produtos: nomeProdutos,
           produtos_detalhados: produtosDetalhados,
           dias_operacao: diasOp,
@@ -324,7 +365,11 @@ export function executarOtimizacao(
           data_saida: dataSaida,
           despesas_portuarias_usd: portoInfo.despesas_portuarias_usd,
           calado_limite_efetivo_m: caladoNaChegada.calado_efetivo_m,
-          restricao_mare_aplicada: caladoNaChegada.fonte === 'mare',
+          restricao_mare_aplicada: caladoNaChegada.fonte === 'mare' || caladoNaChegada.fonte === 'aproximada',
+          fonte_calado: caladoNaChegada.fonte,
+          volume_entregue_teu: unidade === 'TEU' ? volPortoTeu : undefined,
+          peso_entregue_t: pesoPorto > 0 ? +pesoPorto.toFixed(2) : undefined,
+          teu_reefer: teuReeferPorto > 0 ? +teuReeferPorto.toFixed(2) : undefined,
         });
 
         ultimaEntregaPorto[portoId] = dataSaida.slice(0, 10);
@@ -367,9 +412,17 @@ export function executarOtimizacao(
       );
 
       const custoTCDiario = calcularCustoNavio(navioDisp, duracaoDias);
+      const custoReeferTotal = calcularCustoReefer(
+        teuReeferAcumulado,
+        duracaoDias,
+        premissas.custo_energia_reefer_usd_dia_teu ?? 0,
+        navioDisp.consumo_reefer_mt_dia_por_teu ?? 0,
+        premissas.bunker_preco_usd_mt
+      );
       const custoTotal =
-        custoTCDiario + custoBunkerTotal + custoPortuarioTotal + custoDemurrageTotal;
-      const custoPorCbm = volumeAcumulado > 0 ? custoTotal / volumeAcumulado : 0;
+        custoTCDiario + custoBunkerTotal + custoPortuarioTotal + custoDemurrageTotal + custoReeferTotal;
+      const custoPorUnidade = volumeAcumulado > 0 ? custoTotal / volumeAcumulado : 0;
+      const volTotalCbm = demandasViagem.reduce((s, d) => s + d.volume_cbm, 0);
 
       const custos: DetalhesCustoViagem = {
         custo_tc_diario_usd: custoTCDiario,
@@ -378,7 +431,9 @@ export function executarOtimizacao(
         despesas_portuarias_usd: custoPortuarioTotal,
         custo_total_usd: custoTotal,
         custo_total_brl: custoTotal * premissas.taxa_cambio_usd_brl,
-        custo_por_cbm_usd: custoPorCbm,
+        custo_por_cbm_usd: custoPorUnidade,
+        custo_reefer_usd: custoReeferTotal > 0 ? custoReeferTotal : undefined,
+        custo_por_unidade_usd: custoPorUnidade,
       };
 
       const viagem: Viagem = {
@@ -390,11 +445,16 @@ export function executarOtimizacao(
         data_retorno: dataRetorno,
         duracao_dias: duracaoDias,
         paradas,
-        volume_total_cbm: volumeAcumulado,
+        volume_total_cbm: unidade === 'TEU' ? volTotalCbm : volumeAcumulado,
         capacidade_navio_cbm: navioDisp.capacidade_cbm,
-        ocupacao_pct: (volumeAcumulado / navioDisp.capacidade_cbm) * 100,
+        ocupacao_pct: ocupacaoPct,
         distancia_total_nm: distTotal,
         custos,
+        unidade_carga: unidade,
+        volume_total_teu: unidade === 'TEU' ? volumeAcumulado : undefined,
+        capacidade_navio_teu: unidade === 'TEU' ? capNavio : undefined,
+        peso_total_t: pesoAcumulado > 0 ? +pesoAcumulado.toFixed(2) : undefined,
+        teu_reefer_total: teuReeferAcumulado > 0 ? +teuReeferAcumulado.toFixed(2) : undefined,
       };
 
       viagens.push(viagem);
@@ -418,24 +478,45 @@ export function executarOtimizacao(
 
     onProgress?.(90, 'Calculando métricas finais...');
 
-    const volTotalDemandado = demandas.reduce((s, d) => s + d.volume_cbm, 0);
-    const volTotalEntregue = viagens.reduce((s, v) => s + v.volume_total_cbm, 0);
+    // Demanda e entrega segregadas por unidade (CBM / TEU)
+    const demandadoCbm = demandas
+      .filter((d) => unidadeDemanda(d) === 'CBM')
+      .reduce((s, d) => s + d.volume_cbm, 0);
+    const demandadoTeu = demandas
+      .filter((d) => unidadeDemanda(d) === 'TEU')
+      .reduce((s, d) => s + quantidadeDemanda(d), 0);
+    const entregueCbm = viagens
+      .filter((v) => (v.unidade_carga ?? 'CBM') === 'CBM')
+      .reduce((s, v) => s + v.volume_total_cbm, 0);
+    const entregueTeu = viagens
+      .filter((v) => v.unidade_carga === 'TEU')
+      .reduce((s, v) => s + (v.volume_total_teu ?? 0), 0);
+
+    const unidadePrincipal = demandadoTeu > demandadoCbm ? 'TEU' : 'CBM';
+    const reeferTotal = viagens.reduce((s, v) => s + (v.teu_reefer_total ?? 0), 0);
+
+    // % de demanda atendida combinando as unidades presentes
+    const pcts: number[] = [];
+    if (demandadoCbm > 0) pcts.push((entregueCbm / demandadoCbm) * 100);
+    if (demandadoTeu > 0) pcts.push((entregueTeu / demandadoTeu) * 100);
+    const demandaAtendidaPct = pcts.length > 0 ? pcts.reduce((a, b) => a + b, 0) / pcts.length : 0;
+
     const custoTotalUsd = viagens.reduce((s, v) => s + v.custos.custo_total_usd, 0);
     const ocupacaoMedia =
       viagens.length > 0
         ? viagens.reduce((s, v) => s + v.ocupacao_pct, 0) / viagens.length
         : 0;
+    const entregueUnidadePrincipal = unidadePrincipal === 'TEU' ? entregueTeu : entregueCbm;
 
     const metricas: MetricasCenario = {
       total_viagens: viagens.length,
-      volume_total_entregue_cbm: volTotalEntregue,
-      volume_total_demandado_cbm: volTotalDemandado,
-      demanda_atendida_pct:
-        volTotalDemandado > 0 ? (volTotalEntregue / volTotalDemandado) * 100 : 0,
+      volume_total_entregue_cbm: entregueCbm,
+      volume_total_demandado_cbm: demandadoCbm,
+      demanda_atendida_pct: demandaAtendidaPct,
       custo_total_usd: custoTotalUsd,
       custo_total_brl: custoTotalUsd * premissas.taxa_cambio_usd_brl,
       custo_medio_por_cbm_usd:
-        volTotalEntregue > 0 ? custoTotalUsd / volTotalEntregue : 0,
+        entregueUnidadePrincipal > 0 ? custoTotalUsd / entregueUnidadePrincipal : 0,
       ocupacao_media_pct: ocupacaoMedia,
       total_navios_tc_usados: new Set(
         viagens.filter((v) => v.tipo_navio === 'TC').map((v) => v.navio_id)
@@ -444,6 +525,10 @@ export function executarOtimizacao(
         viagens.filter((v) => v.tipo_navio === 'SPOT').map((v) => v.navio_id)
       ).size,
       tempo_execucao_ms: Date.now() - inicio,
+      unidade_carga: unidadePrincipal,
+      volume_total_entregue_teu: entregueTeu,
+      volume_total_demandado_teu: demandadoTeu,
+      teu_reefer_total: reeferTotal > 0 ? +reeferTotal.toFixed(2) : undefined,
     };
 
     onProgress?.(100, 'Otimização concluída!');
@@ -545,8 +630,13 @@ export function gerarJsonSaida(resultado: ResultadoOtimizacao): string {
         navio: { id: v.navio_id, nome: v.navio_nome, tipo: v.tipo_navio },
         periodo: { inicio: v.data_partida, fim: v.data_retorno, duracao_dias: v.duracao_dias },
         carga: {
+          unidade: v.unidade_carga ?? 'CBM',
           volume_cbm: v.volume_total_cbm,
           capacidade_cbm: v.capacidade_navio_cbm,
+          volume_teu: v.volume_total_teu,
+          capacidade_teu: v.capacidade_navio_teu,
+          peso_total_t: v.peso_total_t,
+          teu_reefer: v.teu_reefer_total,
           ocupacao_pct: v.ocupacao_pct,
         },
         rota: {

@@ -1,0 +1,12 @@
+PHAROS v3.3 — Hash para registro INPI (Programa de Computador)
+Algoritmo: SHA-256
+Data de geração (UTC): 2026-06-01T14:04:17.459Z
+Arquivos incluídos: 94
+Bytes totais: 554266
+
+HASH SHA-256:
+323efc854215e52053d95a89712f73d6e03c756aa8e59e38eb830670c342504f
+
+Metodologia: para cada arquivo, concatena-se o caminho relativo (UTF-8) + LF + conteúdo bruto do arquivo, em ordem lexicográfica de caminho. Lista completa em docs/INPI_HASH_SOLUCAO.json
+
+Regenerar: node scripts/generate-inpi-hash.mjs

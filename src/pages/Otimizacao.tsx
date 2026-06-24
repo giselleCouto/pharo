@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatarUsd } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useTenant';
-import { podeOtimizar, PLANOS, percentualUso, isPlanoDemo } from '@/lib/tenant';
+import { podeOtimizar, PLANOS, percentualUso, isPlanoDemo, isPlanoTrial, otimizacoesUsadas } from '@/lib/tenant';
 import { DEMO_LIMITE_OTIMIZACOES } from '@/lib/demoAccount';
 import { LimitePlanoAlert } from '@/components/LimitePlanoAlert';
 
@@ -32,9 +32,10 @@ export default function OtimizacaoPage() {
   const volTotal = demandas.reduce((s, d) => s + d.volume_cbm, 0);
   const plano = tenant ? PLANOS[tenant.plano_id] : null;
   const demo = tenant ? isPlanoDemo(tenant) : false;
+  const trial = tenant ? isPlanoTrial(tenant) : false;
   const check = tenant ? podeOtimizar(tenant) : { pode: true, restam: 999 };
   const pct = tenant ? percentualUso(tenant) : 0;
-  const usoAtual = tenant?.uso_mensal.otimizacoes_usadas ?? 0;
+  const usoAtual = tenant ? otimizacoesUsadas(tenant) : 0;
 
   const handleExecutar = async () => {
     resetar();
@@ -92,14 +93,20 @@ export default function OtimizacaoPage() {
         </Button>
       </div>
 
-      {/* Uso demo / limite de plano */}
-      {tenant && demo && check.pode && (
+      {/* Uso demo / trial / limite de plano */}
+      {tenant && (demo || trial) && check.pode && (
         <div className="p-4 rounded-xl border border-border bg-muted/30 text-sm">
-          <p className="font-medium text-foreground">Conta demonstração</p>
+          <p className="font-medium text-foreground">
+            {demo ? 'Prévia demo (conta compartilhada)' : 'Trial gratuito — sua conta'}
+          </p>
           <p className="text-muted-foreground text-xs mt-1">
-            Você usou <strong>{usoAtual}</strong> de <strong>{DEMO_LIMITE_OTIMIZACOES}</strong> planos de
-            cabotagem permitidos. Restam <strong>{check.restam}</strong> execução
+            Você usou <strong>{usoAtual}</strong> de{' '}
+            <strong>{demo ? DEMO_LIMITE_OTIMIZACOES : PLANOS.TRIAL.limite_otimizacoes_mes}</strong> simulações
+            permitidas. Restam <strong>{check.restam}</strong> execução
             {check.restam !== 1 ? 'ões' : ''} (cada uma gera 4 cenários de rota).
+            {demo && (
+              <> Para dados isolados e mais simulações, <strong>crie sua conta gratuita</strong>.</>
+            )}
           </p>
         </div>
       )}

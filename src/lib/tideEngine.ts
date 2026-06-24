@@ -13,7 +13,7 @@
  *    (surge ±0,3 m). Use margem_meteorologica_m ≥ 0.5 m para planejo antecipado.
  */
 
-import type { JanelaMare, ValidacaoCalado, RestricoesMare, PontoMare } from './types';
+import type { JanelaMare, ValidacaoCalado, RestricoesMare, PontoMare, Porto, FonteCaladoMare } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURAÇÕES DOS PORTOS BRASILEIROS
@@ -60,6 +60,64 @@ const FREQ_RAD_H: Record<string, number> = {
   M2: 0.50591, S2: 0.52360, N2: 0.49637, K1: 0.26252, O1: 0.24339,
   M4: 1.01182, MS4: 1.02951, K2: 0.52504,
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COBERTURA DATA-DRIVEN DE PORTOS
+//   Portos sem harmônicas catalogadas recebem uma SÍNTESE APROXIMADA, derivada
+//   da amplitude média informada no cadastro. A fonte é marcada como
+//   'aproximada' para que a UI e o relatório não apresentem como alta precisão.
+// ─────────────────────────────────────────────────────────────────────────────
+const PORTOS_APROXIMADOS = new Set<string>();
+
+/** Amplitude média de referência (porto-base das harmônicas completas). */
+const AMPLITUDE_REFERENCIA_M = 2.3; // TEMADRE
+
+/** Deriva um conjunto harmônico aproximado escalando o porto de referência. */
+function derivarHarmonicaAproximada(amplitudeMediaM: number): Harmonica {
+  const base = HARMONICAS['TEMADRE'];
+  const escala =
+    amplitudeMediaM > 0 ? amplitudeMediaM / AMPLITUDE_REFERENCIA_M : 1;
+  const out: Harmonica = {};
+  for (const [comp, [amp, fase]] of Object.entries(base)) {
+    out[comp] = [+(amp * escala).toFixed(3), fase];
+  }
+  return out;
+}
+
+/** Indica se as harmônicas de um porto são completas ('mare') ou aproximadas. */
+export function fonteHarmonicaPorto(portoId: string): FonteCaladoMare {
+  if (PORTOS_APROXIMADOS.has(portoId)) return 'aproximada';
+  if (HARMONICAS[portoId]) return 'mare';
+  return 'aproximada';
+}
+
+/**
+ * Garante que um porto tenha dados de maré utilizáveis. Se já houver harmônicas
+ * completas, retorna 'mare'. Caso contrário, registra uma síntese aproximada a
+ * partir da amplitude média do cadastro e retorna 'aproximada'.
+ */
+export function garantirPortoMare(porto: Porto): FonteCaladoMare {
+  if (HARMONICAS[porto.id] && !PORTOS_APROXIMADOS.has(porto.id)) {
+    return 'mare';
+  }
+  if (HARMONICAS[porto.id] && PORTOS_APROXIMADOS.has(porto.id)) {
+    return 'aproximada';
+  }
+  const amplitude = porto.amplitude_media_m ?? AMPLITUDE_REFERENCIA_M;
+  const profundidade =
+    porto.profundidade_canal_m ?? porto.calado_max_metros ?? 12.0;
+  PORTOS_MARE[porto.id] = {
+    nome: porto.nome,
+    lat: porto.latitude,
+    lon: porto.longitude,
+    profundidade_m: profundidade,
+    amplitude_media_m: amplitude,
+    restricao_noturna: porto.restricao_noturna ?? false,
+  };
+  HARMONICAS[porto.id] = derivarHarmonicaAproximada(amplitude);
+  PORTOS_APROXIMADOS.add(porto.id);
+  return 'aproximada';
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HORAS DESDE J2000 (01/01/2000 12:00 UTC) — âncora das harmônicas

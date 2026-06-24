@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTenantStore } from '@/hooks/useTenant';
-import { PLANOS, PlanoId, formatarPreco } from '@/lib/tenant';
+import { PLANOS, PlanoId } from '@/lib/tenant';
 import { ROUTE_PATHS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Eye, EyeOff, Building2, Mail, Lock, User, Briefcase,
-  CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Crown
+  CheckCircle, AlertCircle, ArrowRight, ArrowLeft
 } from 'lucide-react';
 import { PharosLogo } from '@/components/PharosLogo';
 import { cn } from '@/lib/utils';
@@ -22,14 +21,12 @@ import {
 } from '@/lib/demoAccount';
 
 type Modo = 'LOGIN' | 'REGISTRO';
-type EtapaRegistro = 1 | 2 | 3;
-
-const PLANOS_REGISTRO: PlanoId[] = ['STARTER', 'PROFISSIONAL', 'ENTERPRISE'];
+type EtapaRegistro = 1 | 2;
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, registrar, erro, limparErro } = useTenantStore();
+  const { loginPorEmail, login, registrar, limparErro } = useTenantStore();
 
   const [modo, setModo] = useState<Modo>('LOGIN');
 
@@ -59,14 +56,12 @@ export default function AuthPage() {
   const [regCargo, setRegCargo] = useState('');
   const [regSenha, setRegSenha] = useState('');
   const [regConfSenha, setRegConfSenha] = useState('');
-  const [regPlano, setRegPlano] = useState<PlanoId>('PROFISSIONAL');
-  const [regAnual, setRegAnual] = useState(false);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setMsgErro('');
     setLoading(true);
-    const { ok, mensagem } = login(loginTenantId, loginEmail, loginSenha);
+    const { ok, mensagem } = loginPorEmail(loginEmail, loginSenha, loginTenantId || undefined);
     setLoading(false);
     if (ok) navigate(ROUTE_PATHS.CONFIGURACAO);
     else setMsgErro(mensagem);
@@ -93,7 +88,7 @@ export default function AuthPage() {
   function handleRegistro(e: React.FormEvent) {
     e.preventDefault();
     setMsgErro('');
-    if (etapa < 3) { setEtapa((etapa + 1) as EtapaRegistro); return; }
+    if (etapa < 2) { setEtapa(2); return; }
     if (regSenha !== regConfSenha) { setMsgErro('As senhas não coincidem.'); return; }
     if (regSenha.length < 6) { setMsgErro('Senha deve ter ao menos 6 caracteres.'); return; }
     setLoading(true);
@@ -104,16 +99,19 @@ export default function AuthPage() {
       email: regEmail,
       cargo: regCargo,
       senha: regSenha,
-      plano_id: regPlano,
-      cobranca_anual: regAnual,
+      plano_id: 'TRIAL' as PlanoId,
+      cobranca_anual: false,
     });
     setLoading(false);
-    if (ok) navigate(ROUTE_PATHS.CONFIGURACAO);
-    else setMsgErro(mensagem);
+    if (ok) {
+      setMsgSucesso(mensagem);
+      navigate(ROUTE_PATHS.CONFIGURACAO);
+    } else {
+      setMsgErro(mensagem);
+    }
   }
 
-  const planoSel = PLANOS[regPlano];
-  const precoMostrar = regAnual ? planoSel.preco_anual_brl / 12 : planoSel.preco_mensal_brl;
+  const trialPlano = PLANOS.TRIAL;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -191,8 +189,8 @@ export default function AuthPage() {
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
               {modo === 'LOGIN'
-                ? 'Entre com as credenciais da sua empresa'
-                : 'Comece agora com 14 dias de teste gratuito'}
+                ? 'Entre com seu e-mail — cada empresa tem dados isolados'
+                : `Trial de 14 dias · ${trialPlano.limite_otimizacoes_mes} simulações completas · sem cartão`}
             </p>
           </div>
 
@@ -229,28 +227,12 @@ export default function AuthPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                  ID da Empresa
-                </label>
-                <Input
-                  value={loginTenantId} onChange={e => setLoginTenantId(e.target.value)}
-                  placeholder="ex: petro-logistica"
-                  className="font-mono"
-                  required
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  O ID foi enviado no e-mail de boas-vindas ao criar a conta.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-muted-foreground" />
                   E-mail
                 </label>
                 <Input
                   type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="seu@email.com" required
+                  placeholder="seu@empresa.com" required autoComplete="email"
                 />
               </div>
 
@@ -263,7 +245,7 @@ export default function AuthPage() {
                   <Input
                     type={showSenha ? 'text' : 'password'}
                     value={loginSenha} onChange={e => setLoginSenha(e.target.value)}
-                    placeholder="••••••••" required className="pr-10"
+                    placeholder="••••••••" required className="pr-10" autoComplete="current-password"
                   />
                   <button type="button" onClick={() => setShowSenha(!showSenha)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -272,25 +254,34 @@ export default function AuthPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  ID da empresa <span className="text-muted-foreground font-normal">(opcional)</span>
+                </label>
+                <Input
+                  value={loginTenantId} onChange={e => setLoginTenantId(e.target.value)}
+                  placeholder="Só se seu e-mail estiver em mais de uma empresa"
+                  className="font-mono"
+                />
+              </div>
+
               <Button type="submit" className="w-full gap-2" disabled={loading}>
                 {loading ? 'Entrando...' : 'Entrar na plataforma'} <ArrowRight className="w-4 h-4" />
               </Button>
 
               {/* Demo rápido */}
               <div className="p-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-                <p className="font-semibold text-foreground mb-1">🎯 Conta demo ({PLANOS.DEMO.nome})</p>
+                <p className="font-semibold text-foreground mb-1">Prévia rápida (conta compartilhada)</p>
                 <p className="mb-2 text-[11px]">
-                  Limite: <strong className="text-foreground">{DEMO_LIMITE_OTIMIZACOES} planos de cabotagem</strong>{' '}
-                  (cada execução gera 4 cenários). Depois disso, crie uma conta e assine um plano.
+                  Até <strong className="text-foreground">{DEMO_LIMITE_OTIMIZACOES} simulações por navegador</strong>.
+                  Para testar com seus dados, crie uma conta gratuita acima.
                 </p>
-                <p>ID: <code className="bg-muted px-1 rounded">demo-pharos</code></p>
-                <p>E-mail: <code className="bg-muted px-1 rounded">demo@pharos.app</code></p>
-                <p>Senha: <code className="bg-muted px-1 rounded">demo123</code></p>
                 <Button size="sm" variant="outline" className="mt-2 w-full text-xs h-7"
                   type="button"
                   disabled={loading}
                   onClick={entrarComDemo}>
-                  Entrar com conta demo
+                  Entrar na prévia demo
                 </Button>
               </div>
             </form>
@@ -301,7 +292,7 @@ export default function AuthPage() {
             <form onSubmit={handleRegistro} className="space-y-4">
               {/* Indicador de etapa */}
               <div className="flex items-center gap-2">
-                {([1, 2, 3] as EtapaRegistro[]).map((e) => (
+                {([1, 2] as EtapaRegistro[]).map((e) => (
                   <div key={e} className={cn(
                     'flex-1 h-1.5 rounded-full transition-all',
                     etapa >= e ? 'bg-primary' : 'bg-muted'
@@ -309,7 +300,7 @@ export default function AuthPage() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground text-center">
-                Etapa {etapa} de 3 — {etapa === 1 ? 'Empresa' : etapa === 2 ? 'Usuário Admin' : 'Plano'}
+                Etapa {etapa} de 2 — {etapa === 1 ? 'Sua empresa' : 'Seus dados de acesso'}
               </p>
 
               {/* Etapa 1: Empresa */}
@@ -374,72 +365,26 @@ export default function AuthPage() {
                     <Input type="password" value={regConfSenha} onChange={e => setRegConfSenha(e.target.value)}
                       placeholder="Repetir senha" required />
                   </div>
-                </div>
-              )}
 
-              {/* Etapa 3: Plano */}
-              {etapa === 3 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">Escolha seu plano</p>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={cn(!regAnual && 'text-primary font-semibold')}>Mensal</span>
-                      <button type="button" onClick={() => setRegAnual(!regAnual)}
-                        className={cn('w-10 h-5 rounded-full transition-colors relative',
-                          regAnual ? 'bg-primary' : 'bg-muted border border-border')}>
-                        <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all',
-                          regAnual ? 'left-5' : 'left-0.5')} />
-                      </button>
-                      <span className={cn(regAnual && 'text-primary font-semibold')}>
-                        Anual <Badge variant="outline" className="text-[9px] py-0 text-success border-success/30">−20%</Badge>
-                      </span>
-                    </div>
+                  <div className="p-3 rounded-lg border border-success/30 bg-success/5 text-xs text-muted-foreground">
+                    <p className="font-semibold text-foreground mb-1">Incluso no trial gratuito</p>
+                    <ul className="space-y-0.5 list-disc list-inside">
+                      <li>{trialPlano.limite_otimizacoes_mes} simulações completas (4 cenários cada)</li>
+                      <li>Portos e navios ilimitados · validação de calado e maré</li>
+                      <li>14 dias · dados isolados só da sua empresa</li>
+                    </ul>
                   </div>
-
-                  {PLANOS_REGISTRO.map((pid) => {
-                    const pl = PLANOS[pid];
-                    const preco = regAnual ? pl.preco_anual_brl / 12 : pl.preco_mensal_brl;
-                    return (
-                      <button key={pid} type="button"
-                        onClick={() => setRegPlano(pid)}
-                        className={cn(
-                          'w-full text-left p-3 rounded-lg border-2 transition-all text-sm',
-                          regPlano === pid
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/30'
-                        )}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {pl.destaque && <Crown className="w-3.5 h-3.5 text-yellow-400" />}
-                            <span className="font-semibold" style={{ color: pl.cor }}>{pl.nome}</span>
-                            {pl.destaque && <Badge className="text-[9px] py-0 bg-yellow-400/20 text-yellow-400 border-yellow-400/30">Mais popular</Badge>}
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold font-mono">{formatarPreco(preco)}<span className="text-xs text-muted-foreground font-normal">/mês</span></div>
-                            {regAnual && <div className="text-[9px] text-success">Cobrado anualmente</div>}
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {pl.limite_otimizacoes_mes === 0 ? '∞' : pl.limite_otimizacoes_mes} otimizações/mês
-                          · {pl.limite_usuarios === 0 ? '∞' : pl.limite_usuarios} usuários
-                        </div>
-                      </button>
-                    );
-                  })}
-                  <p className="text-xs text-muted-foreground text-center">
-                    14 dias grátis. Cancele a qualquer momento.
-                  </p>
                 </div>
               )}
 
               <div className="flex gap-2">
                 {etapa > 1 && (
-                  <Button type="button" variant="outline" className="gap-1" onClick={() => setEtapa((etapa - 1) as EtapaRegistro)}>
+                  <Button type="button" variant="outline" className="gap-1" onClick={() => setEtapa(1)}>
                     <ArrowLeft className="w-4 h-4" /> Voltar
                   </Button>
                 )}
                 <Button type="submit" className="flex-1 gap-2" disabled={loading}>
-                  {etapa < 3 ? 'Próximo' : loading ? 'Criando conta...' : 'Criar conta'}
+                  {etapa < 2 ? 'Próximo' : loading ? 'Criando conta...' : 'Começar simulação'}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>

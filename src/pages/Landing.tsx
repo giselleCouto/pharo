@@ -309,12 +309,12 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 gap-2 text-base font-semibold px-8 shadow-lg shadow-blue-500/20"
-                onClick={() => navigate(ROUTE_PATHS.AUTH)}>
+                onClick={() => navigate(ROUTE_PATHS.AUTH, { state: { modo: 'REGISTRO' } })}>
                 Começar teste grátis <ArrowRight className="w-5 h-5" />
               </Button>
               <Button size="lg" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-800 gap-2"
-                onClick={() => navigate(ROUTE_PATHS.AUTH)}>
-                Ver demonstração
+                onClick={() => navigate(ROUTE_PATHS.AUTH, { state: { modo: 'REGISTRO' } })}>
+                Criar conta com meu e-mail
               </Button>
             </div>
 

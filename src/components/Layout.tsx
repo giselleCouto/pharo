@@ -4,7 +4,7 @@ import { Settings, Zap, BarChart3, Home, Crown, LogOut, AlertTriangle } from 'lu
 import { PharosLogo } from '@/components/PharosLogo';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useTenant';
-import { PLANOS, percentualUso, podeOtimizar, formatarPreco, isPlanoDemo } from '@/lib/tenant';
+import { PLANOS, percentualUso, podeOtimizar, formatarPreco, isPlanoDemo, isPlanoTrial, otimizacoesUsadas } from '@/lib/tenant';
 import { DEMO_LIMITE_OTIMIZACOES } from '@/lib/demoAccount';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const plano = tenant ? PLANOS[tenant.plano_id] : null;
   const demo = tenant ? isPlanoDemo(tenant) : false;
+  const trial = tenant ? isPlanoTrial(tenant) : false;
   const pct = tenant ? percentualUso(tenant) : 0;
   const check = tenant ? podeOtimizar(tenant) : { pode: true, restam: 0 };
-  const usoAtual = tenant?.uso_mensal.otimizacoes_usadas ?? 0;
+  const usoAtual = tenant ? otimizacoesUsadas(tenant) : 0;
   const limiteTotal = plano?.limite_otimizacoes_mes ?? 0;
-  const labelUso = demo ? 'planos demo' : 'runs';
+  const labelUso = demo ? 'prévia demo' : trial ? 'simulações trial' : 'runs';
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -40,7 +41,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex gap-3 shrink-0">
             {demo && (
               <Link to={ROUTE_PATHS.AUTH} state={{ modo: 'REGISTRO' }} className="underline text-warning hover:text-warning/80 font-semibold">
-                Criar conta →
+                Criar conta gratuita →
+              </Link>
+            )}
+            {trial && !check.pode && (
+              <Link to={ROUTE_PATHS.PLANOS} className="underline text-warning hover:text-warning/80 font-semibold">
+                Assinar plano →
               </Link>
             )}
             <Link to={ROUTE_PATHS.PLANOS} className="underline text-warning hover:text-warning/80 font-semibold">

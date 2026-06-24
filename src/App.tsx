@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ROUTE_PATHS } from '@/lib/types';
 import { Layout } from '@/components/Layout';
 import { AuthGuard } from '@/components/AuthGuard';
+import { TenantBootstrap } from '@/components/TenantBootstrap';
 import { useTenantStore } from '@/hooks/useTenant';
 import { ensureDemoAccount, DEMO_TENANT_ID, getDemoTenant } from '@/lib/demoAccount';
 import LandingPage from '@/pages/Landing';
@@ -38,16 +39,16 @@ function App() {
 
         {/* Protegidas — exigem autenticação */}
         <Route path={ROUTE_PATHS.CONFIGURACAO} element={
-          <AuthGuard><Layout><ConfiguracaoPage /></Layout></AuthGuard>
+          <AuthGuard><TenantBootstrap /><Layout><ConfiguracaoPage /></Layout></AuthGuard>
         } />
         <Route path={ROUTE_PATHS.OTIMIZACAO} element={
-          <AuthGuard><Layout><OtimizacaoPage /></Layout></AuthGuard>
+          <AuthGuard><TenantBootstrap /><Layout><OtimizacaoPage /></Layout></AuthGuard>
         } />
         <Route path={ROUTE_PATHS.RESULTADOS} element={
-          <AuthGuard><Layout><ResultadosPage /></Layout></AuthGuard>
+          <AuthGuard><TenantBootstrap /><Layout><ResultadosPage /></Layout></AuthGuard>
         } />
         <Route path={ROUTE_PATHS.PLANOS} element={
-          <AuthGuard><Layout><PlanosPage /></Layout></AuthGuard>
+          <AuthGuard><TenantBootstrap /><Layout><PlanosPage /></Layout></AuthGuard>
         } />
 
         <Route path="*" element={<Navigate to={ROUTE_PATHS.LANDING} replace />} />

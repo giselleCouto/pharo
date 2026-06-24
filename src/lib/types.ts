@@ -9,6 +9,14 @@ export interface PontoMare {
   tipo: 'height' | 'High' | 'Low';
 }
 
+/**
+ * Origem do calado efetivo resolvido para um porto/data:
+ *  - 'catalogo'   : valor de catálogo (calado máximo do porto)
+ *  - 'mare'       : maré com harmônicas completas (alta precisão)
+ *  - 'aproximada' : maré sintetizada a partir da amplitude média (baixa precisão)
+ */
+export type FonteCaladoMare = 'catalogo' | 'mare' | 'aproximada';
+
 export interface JanelaMare {
   porto_id: string;
   data: string;            // YYYY-MM-DD
@@ -94,6 +102,17 @@ export interface PerfilConsumo {
 export type TipoNavio = 'TC' | 'SPOT';
 export type VelocidadeNavio = 'FULL' | 'ECO' | 'MIN';
 
+/** Unidade de medida da carga: granel líquido/seco (CBM) ou contêiner (TEU). */
+export type UnidadeCarga = 'CBM' | 'TEU';
+
+/**
+ * Classe de carga perigosa segundo o Código IMDG (IMO).
+ * 'NAO_PERIGOSA' = carga geral; '1'..'9' = classes IMDG.
+ */
+export type ClasseIMO =
+  | 'NAO_PERIGOSA'
+  | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+
 export interface Navio {
   id: string;
   nome: string;
@@ -110,6 +129,19 @@ export interface Navio {
   perfil_consumo: PerfilConsumo;
   velocidade_referencia: VelocidadeNavio;
   ativo: boolean;
+  // ── Contêiner (opcional; ausente = navio de granel em CBM) ──────
+  /** Unidade que o navio transporta. Default 'CBM'. */
+  unidade_carga?: UnidadeCarga;
+  /** Capacidade em TEU (quando unidade_carga = 'TEU'). */
+  capacidade_teu?: number;
+  /** Tomadas reefer (contêineres refrigerados) disponíveis a bordo. */
+  slots_reefer?: number;
+  /** Capacidade de peso de carga / deadweight útil (toneladas). */
+  capacidade_peso_t?: number;
+  /** Altura máxima de empilhamento on-deck (tiers). */
+  altura_empilhamento_max?: number;
+  /** Bunker extra por dia para gerar energia de cada TEU reefer (MT/dia/TEU). */
+  consumo_reefer_mt_dia_por_teu?: number;
 }
 
 /** Previsão de maré / profundidade por porto e janela (DHN, NOAA, harmônica). */
@@ -122,11 +154,22 @@ export interface PrevisaoMarePorto {
   ukc_minimo_m?: number;
 }
 
-// ── Produto individual de entrega em um porto ──────────────────
+// ── Produto / lote de carga individual de entrega em um porto ──
 export interface ProdutoEntrega {
   id: string;
   nome: string;
   volume_cbm: number;
+  // ── Atributos de contêiner (opcionais) ─────────────────────────
+  /** Quantidade em TEU deste lote (carga conteinerizada). */
+  volume_teu?: number;
+  /** Carga refrigerada (consome tomada reefer + energia). */
+  reefer?: boolean;
+  /** Peso total do lote em toneladas (para limite de deadweight). */
+  peso_t?: number;
+  /** Classe de carga perigosa IMDG/IMO. Default 'NAO_PERIGOSA'. */
+  classe_imo?: ClasseIMO;
+  /** Tiers de empilhamento exigidos/permitidos. */
+  altura_empilhamento?: number;
 }
 
 export interface Demanda {
@@ -140,6 +183,11 @@ export interface Demanda {
   prioridade: 'ALTA' | 'MEDIA' | 'BAIXA';
   janela_min_dias?: number;
   janela_max_dias?: number;
+  // ── Contêiner (opcional) ────────────────────────────────────────
+  /** Unidade da demanda. Default 'CBM'. */
+  unidade_carga?: UnidadeCarga;
+  /** Volume total em TEU (quando unidade_carga = 'TEU'). */
+  volume_teu?: number;
 }
 
 export interface Premissas {
@@ -166,6 +214,11 @@ export interface Premissas {
   restricoes_mare?: RestricoesMare;    // previsão pré-calculada (injetada pelo backend)
   // ── Margens de Lucro ──────────────────────────────────────────
   margem_lucro_alvo_pct: number;       // Padrão 60%
+  // ── Contêiner (opcional) ──────────────────────────────────────
+  /** Unidade padrão usada ao criar novas demandas/navios. Default 'CBM'. */
+  unidade_carga_padrao?: UnidadeCarga;
+  /** Custo de energia para contêiner refrigerado (USD por TEU reefer por dia). */
+  custo_energia_reefer_usd_dia_teu?: number;
 }
 
 export interface ConfiguracaoOtimizacao {
@@ -196,6 +249,12 @@ export interface ParadaViagem {
   despesas_portuarias_usd: number;
   calado_limite_efetivo_m?: number;
   restricao_mare_aplicada?: boolean;
+  /** Fonte do calado: catálogo, maré harmônica ou aproximação por amplitude. */
+  fonte_calado?: FonteCaladoMare;
+  // ── Contêiner (opcional) ────────────────────────────────────────
+  volume_entregue_teu?: number;
+  peso_entregue_t?: number;
+  teu_reefer?: number;
 }
 
 export interface DetalhesCustoViagem {
@@ -206,6 +265,10 @@ export interface DetalhesCustoViagem {
   custo_total_usd: number;
   custo_total_brl: number;
   custo_por_cbm_usd: number;
+  /** Custo de energia de contêineres reefer na viagem (USD). */
+  custo_reefer_usd?: number;
+  /** Custo por unidade de carga (CBM ou TEU conforme a viagem). */
+  custo_por_unidade_usd?: number;
 }
 
 export interface Viagem {
@@ -224,6 +287,13 @@ export interface Viagem {
   ocupacao_pct: number;
   distancia_total_nm: number;
   custos: DetalhesCustoViagem;
+  // ── Contêiner (opcional) ────────────────────────────────────────
+  /** Unidade de carga desta viagem ('CBM' por padrão). */
+  unidade_carga?: UnidadeCarga;
+  volume_total_teu?: number;
+  capacidade_navio_teu?: number;
+  peso_total_t?: number;
+  teu_reefer_total?: number;
 }
 
 export type TipoCenario = 'OTIMISTA' | 'BASE' | 'CONSERVADOR' | 'CUSTO_MINIMO';
@@ -240,6 +310,11 @@ export interface MetricasCenario {
   total_navios_tc_usados: number;
   total_navios_spot_usados: number;
   tempo_execucao_ms: number;
+  // ── Contêiner (opcional) ────────────────────────────────────────
+  unidade_carga?: UnidadeCarga;
+  volume_total_entregue_teu?: number;
+  volume_total_demandado_teu?: number;
+  teu_reefer_total?: number;
 }
 
 export interface CenarioOtimizacao {

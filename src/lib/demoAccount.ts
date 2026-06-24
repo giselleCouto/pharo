@@ -2,14 +2,16 @@
  * Conta demo — garante tenant e credencial sempre consistentes no localStorage.
  */
 import type { Tenant, TenantUser } from '@/lib/tenant';
-import { verificarResetMensal } from '@/lib/tenant';
+import { verificarResetMensal, tenantKey } from '@/lib/tenant';
+import { DEMO_LIMITE_BROWSER } from '@/lib/demoUsage';
+import { salvarConfiguracaoInicialTenant } from '@/lib/trialConfig';
 
 export const DEMO_TENANT_ID = 'demo-pharos';
 export const DEMO_EMAIL = 'demo@pharos.app';
 export const DEMO_SENHA = 'demo123';
 
-/** Máximo de execuções do motor (= planos de cabotagem gerados) na conta demo */
-export const DEMO_LIMITE_OTIMIZACOES = 2;
+/** Limite exibido na UI da conta demo compartilhada (por navegador). */
+export const DEMO_LIMITE_OTIMIZACOES = DEMO_LIMITE_BROWSER;
 
 const REGISTRY_KEY = 'cab_tenant_registry';
 const LEGACY_TENANT_ID = 'demo-cabotagem';
@@ -94,6 +96,10 @@ export function ensureDemoAccount(): void {
 
   localStorage.removeItem(credKey(LEGACY_TENANT_ID, LEGACY_EMAIL));
   localStorage.removeItem(credKey(DEMO_TENANT_ID, LEGACY_EMAIL));
+
+  if (typeof window !== 'undefined' && !localStorage.getItem(tenantKey(DEMO_TENANT_ID, 'config'))) {
+    salvarConfiguracaoInicialTenant(DEMO_TENANT_ID);
+  }
 }
 
 /** Retorna tenant demo atualizado (após ensure). */

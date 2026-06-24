@@ -32,6 +32,25 @@ export function calcularDemurrageSpot(
   return excesso * taxa;
 }
 
+/**
+ * Custo de energia de contêineres refrigerados (reefer).
+ * Combina, quando disponível, o custo elétrico/operacional (USD/TEU/dia)
+ * e o bunker extra para geração de energia a bordo.
+ */
+export function calcularCustoReefer(
+  teuReefer: number,
+  diasViagem: number,
+  custoUsdDiaTeu: number,
+  consumoBunkerMtDiaPorTeu: number,
+  precoBunkerUsdMt: number
+): number {
+  if (teuReefer <= 0 || diasViagem <= 0) return 0;
+  const custoEnergia = teuReefer * diasViagem * Math.max(0, custoUsdDiaTeu);
+  const custoBunkerReefer =
+    teuReefer * diasViagem * Math.max(0, consumoBunkerMtDiaPorTeu) * precoBunkerUsdMt;
+  return custoEnergia + custoBunkerReefer;
+}
+
 export function calcularCustoNavio(
   navio: Navio,
   duracaoDias: number

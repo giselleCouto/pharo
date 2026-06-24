@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useOtimizadorStore } from '@/hooks/useOtimizador';
 import { Porto, Navio, Demanda, MatrizDistancia, ProdutoEntrega } from '@/lib/types';
 import { TideCalendar } from '@/components/TideCalendar';
@@ -14,6 +14,7 @@ import {
   MapPin, Ship, Package, Settings, Plus, Trash2, Anchor, Grid3x3, AlertCircle, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { cn, formatarUsd } from '@/lib/utils';
+import { WelcomeGuideBanner } from '@/components/WelcomeGuideBanner';
 
 // ─── Componente Porto Form ─────────────────────────────────────
 function PortoRow({ porto, onChange, onRemove }: {
@@ -534,6 +535,11 @@ function MaresTab({ config }: { config: { portos: Porto[]; premissas: { inicio_p
 export default function ConfiguracaoPage() {
   const { configuracao, setConfiguracao } = useOtimizadorStore();
   const [config, setConfig] = useState(configuracao);
+  const [abaAtiva, setAbaAtiva] = useState('portos');
+
+  useEffect(() => {
+    setConfig(configuracao);
+  }, [configuracao]);
 
   const salvar = () => {
     setConfiguracao(config);
@@ -618,7 +624,12 @@ export default function ConfiguracaoPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="portos" className="space-y-4">
+      <WelcomeGuideBanner
+        onIrParaAba={setAbaAtiva}
+        onSalvar={salvar}
+      />
+
+      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
         <TabsList className="bg-muted border border-border">
           <TabsTrigger value="portos" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <MapPin className="w-4 h-4" /> Portos ({config.portos.length})

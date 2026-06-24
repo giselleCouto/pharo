@@ -86,6 +86,52 @@ export const PORTOS_DEFAULT: Porto[] = [
     restricao_noturna: false,
     referencial_datum: 'ZH',
     offset_mare_m: 0,
+  },
+  {
+    id: 'PARANAGUÁ',
+    nome: 'Porto de Paranaguá',
+    codigo: 'PARANAGUÁ',
+    latitude: -25.50,
+    longitude: -48.52,
+    calado_max_metros: 12.5,
+    dias_operacao: 2.0,
+    despesas_portuarias_usd: 17500,
+    profundidade_canal_m: 12.5,
+    amplitude_media_m: 1.5,
+    restricao_noturna: true,
+    referencial_datum: 'ZH',
+    offset_mare_m: 0,
+  },
+  {
+    id: 'ITAJAÍ',
+    nome: 'Porto de Itajaí',
+    codigo: 'ITAJAÍ',
+    latitude: -26.91,
+    longitude: -48.65,
+    calado_max_metros: 11.0,
+    dias_operacao: 1.8,
+    despesas_portuarias_usd: 16000,
+    profundidade_canal_m: 11.0,
+    amplitude_media_m: 1.0,
+    restricao_noturna: false,
+    referencial_datum: 'ZH',
+    offset_mare_m: 0,
+  },
+  {
+    // Porto SEM harmônicas catalogadas → demonstra síntese de maré APROXIMADA
+    id: 'NAVEGANTES',
+    nome: 'Portonave (Navegantes)',
+    codigo: 'NAVEGANTES',
+    latitude: -26.88,
+    longitude: -48.65,
+    calado_max_metros: 11.3,
+    dias_operacao: 1.8,
+    despesas_portuarias_usd: 16500,
+    profundidade_canal_m: 11.3,
+    amplitude_media_m: 1.0,
+    restricao_noturna: false,
+    referencial_datum: 'ZH',
+    offset_mare_m: 0,
   }
 ];
 
@@ -98,6 +144,15 @@ export const MATRIZ_DISTANCIAS_DEFAULT: MatrizDistancia[] = [
   { porto_origem_id: 'SUAPE', porto_destino_id: 'ITAQUI', distancia_nm: 880, dias_transito: 3.0 },
   { porto_origem_id: 'PECÉM', porto_destino_id: 'ITAQUI', distancia_nm: 580, dias_transito: 2.0 },
   { porto_origem_id: 'SANTOS', porto_destino_id: 'TEMADRE', distancia_nm: 850, dias_transito: 3.0 },
+  // ── Rotas de contêiner (cabotagem Sul) ──
+  { porto_origem_id: 'TEMADRE', porto_destino_id: 'PARANAGUÁ', distancia_nm: 1080, dias_transito: 3.5 },
+  { porto_origem_id: 'TEMADRE', porto_destino_id: 'ITAJAÍ', distancia_nm: 1180, dias_transito: 3.8 },
+  { porto_origem_id: 'TEMADRE', porto_destino_id: 'NAVEGANTES', distancia_nm: 1185, dias_transito: 3.8 },
+  { porto_origem_id: 'SANTOS', porto_destino_id: 'PARANAGUÁ', distancia_nm: 230, dias_transito: 1.0 },
+  { porto_origem_id: 'SANTOS', porto_destino_id: 'ITAJAÍ', distancia_nm: 330, dias_transito: 1.2 },
+  { porto_origem_id: 'PARANAGUÁ', porto_destino_id: 'ITAJAÍ', distancia_nm: 120, dias_transito: 0.6 },
+  { porto_origem_id: 'ITAJAÍ', porto_destino_id: 'NAVEGANTES', distancia_nm: 6, dias_transito: 0.2 },
+  { porto_origem_id: 'PARANAGUÁ', porto_destino_id: 'NAVEGANTES', distancia_nm: 125, dias_transito: 0.6 },
 ];
 
 export const NAVIOS_DEFAULT: Navio[] = [
@@ -154,6 +209,30 @@ export const NAVIOS_DEFAULT: Navio[] = [
     velocidade_referencia: 'MIN',
     ativo: true,
   },
+  {
+    // Navio porta-contêiner (cabotagem de contêiner) — opera em TEU
+    id: 'NAV004',
+    nome: 'Log-In Pantanal (Feeder)',
+    tipo: 'TC',
+    capacidade_cbm: 0,
+    unidade_carga: 'TEU',
+    capacidade_teu: 2800,
+    slots_reefer: 400,
+    capacidade_peso_t: 34000,
+    altura_empilhamento_max: 7,
+    consumo_reefer_mt_dia_por_teu: 0.012,
+    calado_carregado_metros: 9.8,
+    calado_vazio_metros: 6.5,
+    custo_tc_diario_usd: 26000,
+    perfil_consumo: {
+      velocidade_no: 16,
+      consumo_carregado_mt_dia: 48,
+      consumo_vazio_mt_dia: 38,
+      consumo_descarga_mt_dia: 6,
+    },
+    velocidade_referencia: 'ECO',
+    ativo: true,
+  },
 ];
 
 export const DEMANDAS_DEFAULT: Demanda[] = [
@@ -185,6 +264,51 @@ export const DEMANDAS_DEFAULT: Demanda[] = [
     produtos: [{ id: 'P3', nome: 'GLP', volume_cbm: 15000 }],
     data_necessidade: '2026-06-01',
     prioridade: 'ALTA'
+  },
+  // ── Demandas conteinerizadas (TEU) — cabotagem de contêiner ──
+  {
+    id: 'DEM004',
+    porto_destino_id: 'ITAJAÍ',
+    produto: 'Carga geral + reefer',
+    volume_cbm: 0,
+    unidade_carga: 'TEU',
+    volume_teu: 900,
+    produtos: [
+      { id: 'C1', nome: 'Carga seca (dry)', volume_cbm: 0, volume_teu: 650, peso_t: 8450, classe_imo: 'NAO_PERIGOSA', altura_empilhamento: 6 },
+      { id: 'C2', nome: 'Refrigerados (reefer)', volume_cbm: 0, volume_teu: 250, reefer: true, peso_t: 3500, classe_imo: 'NAO_PERIGOSA', altura_empilhamento: 5 },
+    ],
+    data_necessidade: '2026-05-18',
+    prioridade: 'ALTA',
+    janela_min_dias: 5,
+    janela_max_dias: 30,
+  },
+  {
+    id: 'DEM005',
+    porto_destino_id: 'PARANAGUÁ',
+    produto: 'Carga geral + perigosa',
+    volume_cbm: 0,
+    unidade_carga: 'TEU',
+    volume_teu: 700,
+    produtos: [
+      { id: 'C3', nome: 'Carga seca (dry)', volume_cbm: 0, volume_teu: 560, peso_t: 7280, classe_imo: 'NAO_PERIGOSA', altura_empilhamento: 6 },
+      { id: 'C4', nome: 'Inflamáveis (IMO 3)', volume_cbm: 0, volume_teu: 140, peso_t: 1960, classe_imo: '3', altura_empilhamento: 3 },
+    ],
+    data_necessidade: '2026-05-24',
+    prioridade: 'MEDIA',
+  },
+  {
+    id: 'DEM006',
+    porto_destino_id: 'NAVEGANTES',
+    produto: 'Carga geral + reefer',
+    volume_cbm: 0,
+    unidade_carga: 'TEU',
+    volume_teu: 600,
+    produtos: [
+      { id: 'C5', nome: 'Carga seca (dry)', volume_cbm: 0, volume_teu: 470, peso_t: 6110, classe_imo: 'NAO_PERIGOSA', altura_empilhamento: 6 },
+      { id: 'C6', nome: 'Refrigerados (reefer)', volume_cbm: 0, volume_teu: 130, reefer: true, peso_t: 1820, classe_imo: 'NAO_PERIGOSA', altura_empilhamento: 5 },
+    ],
+    data_necessidade: '2026-06-02',
+    prioridade: 'MEDIA',
   }
 ];
 
@@ -204,12 +328,15 @@ export const PREMISSAS_DEFAULT: Premissas = {
   percentil_performance: 50,
   origem_sempre_temadre: true,
   // ── Maré e Calado ─────────────────────────────────────────────
-  usar_previsao_mare: false,
+  usar_previsao_mare: true,
   margem_seguranca_mare_m: 0.50,
   margem_meteorologica_m: 0.50,
   worldtides_api_key: '',
   // ── Margens de Lucro ──────────────────────────────────────────
   margem_lucro_alvo_pct: 60,
+  // ── Contêiner ─────────────────────────────────────────────────
+  unidade_carga_padrao: 'CBM',
+  custo_energia_reefer_usd_dia_teu: 8,
 };
 
 export const CONFIGURACAO_DEFAULT: ConfiguracaoOtimizacao = {
