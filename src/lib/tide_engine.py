@@ -123,36 +123,46 @@ PORTOS_BRASIL: Dict[str, Dict] = {
 # Amplitude (m) e fase (graus), convenção: eta = nível médio + Σ A·cos(ω·tJ − φ),
 # tJ = horas desde J2000 (UTC). Espelho de src/lib/tideEngine.ts.
 #
-# ITAQUI — VALIDADO contra a Tábua de Marés DHN 2025 (19 componentes;
-#   ~3 min / ~5 cm nos extremos). Demais portos — NÃO VALIDADOS (referenciais).
+# PORTOS VALIDADOS (ITAQUI, SANTOS, SUAPE) contra a Tábua de Marés DHN 2025 do porto
+#   (19 componentes, ajuste híbrido; ver tideEngine.ts). Demais portos — NÃO VALIDADOS
+#   (referenciais, com as frequências legadas deste arquivo).
 # ─────────────────────────────────────────────────────────────────────────────
 HARMONICAS: Dict[str, Dict] = {
     # Formato: componente → (amplitude_m, fase_graus)
-    # Frequências (ciclos/hora): M2=0.0805, S2=0.0833, N2=0.0789, K1=0.0418, O1=0.0387
     "TEMADRE": {
         "M2": (0.60, 245.0), "S2": (0.22, 275.0), "N2": (0.13, 228.0),
         "K1": (0.11, 190.0), "O1": (0.08, 165.0),
     },
     "SUAPE": {
-        "M2": (0.58, 230.0), "S2": (0.20, 262.0), "N2": (0.12, 214.0),
-        "K1": (0.10, 180.0), "O1": (0.07, 155.0),
+        "M2": (0.7343, 75.98), "S2": (0.2697, 218.79), "N2": (0.1478, 201.41),
+        "K2": (0.1063, 11.22), "O1": (0.0630, 248.49), "NU2": (0.0550, 168.37),
+        "K1": (0.0473, 84.37), "2N2": (0.0415, 327.67), "MU2": (0.0320, 292.35),
+        "L2": (0.0207, 130.63), "Q1": (0.0185, 356.54), "P1": (0.0104, 97.81),
+        "M3": (0.0048, 53.42), "M4": (0.0042, 100.40), "MN4": (0.0035, 176.71),
+        "MS4": (0.0026, 48.88), "M6": (0.0020, 13.04), "2MS6": (0.0008, 230.03),
+        "MK3": (0.0002, 51.16),
     },
     "PECÉM": {
         "M2": (0.65, 220.0), "S2": (0.24, 255.0), "N2": (0.14, 205.0),
         "K1": (0.12, 170.0), "O1": (0.09, 148.0),
     },
     "ITAQUI": {
-        "M2": (2.1437, 164.74), "S2": (0.6012, 329.53), "N2": (0.4401, 287.75),
-        "L2": (0.2576, 182.38), "K2": (0.2055, 128.76), "O1": (0.1202, 321.81),
-        "K1": (0.1086, 90.48), "MU2": (0.0906, 126.04), "NU2": (0.0830, 252.24),
-        "2N2": (0.0579, 54.59), "P1": (0.0322, 111.05), "M3": (0.0084, 192.95),
-        "M4": (0.0058, 147.04), "MN4": (0.0030, 155.14), "MK3": (0.0026, 217.83),
-        "MS4": (0.0019, 95.01), "M6": (0.0005, 306.85), "Q1": (0.0004, 12.73),
-        "2MS6": (0.0003, 303.32),
+        "M2": (2.1469, 164.76), "S2": (0.6052, 329.36), "N2": (0.4364, 287.67),
+        "L2": (0.2545, 181.87), "K2": (0.2052, 128.80), "O1": (0.1185, 321.76),
+        "K1": (0.1070, 90.41), "MU2": (0.0904, 126.54), "NU2": (0.0833, 251.96),
+        "2N2": (0.0573, 54.94), "P1": (0.0318, 111.02), "M4": (0.0141, 151.81),
+        "M3": (0.0101, 193.29), "M6": (0.0067, 326.09), "2MS6": (0.0060, 100.16),
+        "MN4": (0.0048, 189.10), "MS4": (0.0031, 359.84), "MK3": (0.0014, 256.52),
+        "Q1": (0.0004, 29.19),
     },
     "SANTOS": {
-        "M2": (0.42, 295.0), "S2": (0.18, 330.0), "N2": (0.09, 278.0),
-        "K1": (0.08, 250.0), "O1": (0.06, 225.0),
+        "M2": (0.3617, 49.61), "S2": (0.2336, 178.02), "O1": (0.1284, 194.10),
+        "K2": (0.0806, 335.34), "K1": (0.0642, 349.54), "M3": (0.0564, 171.65),
+        "N2": (0.0461, 246.39), "Q1": (0.0358, 287.84), "MK3": (0.0266, 263.90),
+        "P1": (0.0200, 359.10), "M4": (0.0149, 261.11), "2MS6": (0.0129, 97.52),
+        "NU2": (0.0082, 199.58), "MU2": (0.0055, 171.37), "2N2": (0.0055, 62.42),
+        "MS4": (0.0040, 232.07), "M6": (0.0039, 347.99), "L2": (0.0036, 329.46),
+        "MN4": (0.0021, 211.45),
     },
     "PARANAGUÁ": {
         "M2": (0.55, 285.0), "S2": (0.20, 315.0), "N2": (0.12, 270.0),
@@ -170,10 +180,21 @@ FREQ_RAD_H = {
     "M3": 0.758802074, "MK3": 0.768384221, "M6": 1.517604149, "2MS6": 1.535334874,
 }
 
+# TRANSITÓRIO — frequências antigas deste arquivo, usadas só pelos portos não validados
+# (as fases deles foram fixadas com estas frequências). Remover quando todos forem validados.
+FREQ_RAD_H_LEGADO = {
+    "M2": 0.5059, "S2": 0.5236, "N2": 0.4963,
+    "K1": 0.2625, "O1": 0.2434,
+}
+
+PORTOS_VALIDADOS = {"ITAQUI", "SANTOS", "SUAPE"}
+
 # Nível médio (m) sobre o zero hidrográfico; portos sem valor validado mantêm 1,0 m.
 NIVEL_MEDIO_PADRAO_M = 1.0
 NIVEL_MEDIO_M = {
-    "ITAQUI": 3.34,  # DHN 2025 declara 3,4 m; ajuste à tábua: 3,339 m
+    "ITAQUI": 3.34,  # DHN 2025 declara 3,40 m
+    "SANTOS": 0.77,  # DHN 2025 declara 0,78 m
+    "SUAPE": 1.28,   # DHN 2025 declara 1,27 m
 }
 
 
@@ -270,6 +291,7 @@ def prever_mare_harmonico(
         harmonicas = HARMONICAS["TEMADRE"]
 
     nivel_medio = NIVEL_MEDIO_M.get(porto_id, NIVEL_MEDIO_PADRAO_M)
+    freqs = FREQ_RAD_H if porto_id in PORTOS_VALIDADOS else FREQ_RAD_H_LEGADO
     t0_h = _data_to_t0_horas(inicio)
     n_pts = int(dias * 24 * 60 / intervalo_min)
     resultados = []
@@ -278,7 +300,7 @@ def prever_mare_harmonico(
         t_h = t0_h + i * intervalo_min / 60.0
         eta = 0.0
         for comp, (amp, fase_grau) in harmonicas.items():
-            freq = FREQ_RAD_H[comp]
+            freq = freqs[comp]
             fase = math.radians(fase_grau)
             eta += amp * math.cos(freq * t_h - fase)
 
