@@ -120,8 +120,11 @@ PORTOS_BRASIL: Dict[str, Dict] = {
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COMPONENTES HARMÔNICAS LOCAIS (offline fallback)
-# Amplitude (m) e fase (graus) das principais componentes para cada porto
-# Extraídas da Tábua DHN 2026 por análise harmônica
+# Amplitude (m) e fase (graus), convenção: eta = nível médio + Σ A·cos(ω·tJ − φ),
+# tJ = horas desde J2000 (UTC). Espelho de src/lib/tideEngine.ts.
+#
+# ITAQUI — VALIDADO contra a Tábua de Marés DHN 2025 (19 componentes;
+#   ~3 min / ~5 cm nos extremos). Demais portos — NÃO VALIDADOS (referenciais).
 # ─────────────────────────────────────────────────────────────────────────────
 HARMONICAS: Dict[str, Dict] = {
     # Formato: componente → (amplitude_m, fase_graus)
@@ -139,8 +142,13 @@ HARMONICAS: Dict[str, Dict] = {
         "K1": (0.12, 170.0), "O1": (0.09, 148.0),
     },
     "ITAQUI": {
-        "M2": (1.80, 180.0), "S2": (0.58, 210.0), "N2": (0.38, 165.0),
-        "K1": (0.14, 130.0), "O1": (0.10, 110.0),
+        "M2": (2.1437, 164.74), "S2": (0.6012, 329.53), "N2": (0.4401, 287.75),
+        "L2": (0.2576, 182.38), "K2": (0.2055, 128.76), "O1": (0.1202, 321.81),
+        "K1": (0.1086, 90.48), "MU2": (0.0906, 126.04), "NU2": (0.0830, 252.24),
+        "2N2": (0.0579, 54.59), "P1": (0.0322, 111.05), "M3": (0.0084, 192.95),
+        "M4": (0.0058, 147.04), "MN4": (0.0030, 155.14), "MK3": (0.0026, 217.83),
+        "MS4": (0.0019, 95.01), "M6": (0.0005, 306.85), "Q1": (0.0004, 12.73),
+        "2MS6": (0.0003, 303.32),
     },
     "SANTOS": {
         "M2": (0.42, 295.0), "S2": (0.18, 330.0), "N2": (0.09, 278.0),
@@ -152,10 +160,20 @@ HARMONICAS: Dict[str, Dict] = {
     },
 }
 
-# Frequências (rad/hora) das componentes principais
+# Frequências (rad/hora), com precisão total. O tempo é contado desde J2000
+# (~230 mil horas): arredondar na 4ª ou 5ª casa desloca a fase em ciclos inteiros.
 FREQ_RAD_H = {
-    "M2": 0.5059, "S2": 0.5236, "N2": 0.4963,
-    "K1": 0.2625, "O1": 0.2434,
+    "M2": 0.505868049, "S2": 0.523598776, "N2": 0.496366918, "K2": 0.525032342,
+    "K1": 0.262516170, "O1": 0.243351879, "P1": 0.261082606, "Q1": 0.233850748,
+    "2N2": 0.486865787, "MU2": 0.488137322, "NU2": 0.497638453, "L2": 0.515369180,
+    "M4": 1.011736098, "MS4": 1.029466825, "MN4": 1.002234967,
+    "M3": 0.758802074, "MK3": 0.768384221, "M6": 1.517604149, "2MS6": 1.535334874,
+}
+
+# Nível médio (m) sobre o zero hidrográfico; portos sem valor validado mantêm 1,0 m.
+NIVEL_MEDIO_PADRAO_M = 1.0
+NIVEL_MEDIO_M = {
+    "ITAQUI": 3.34,  # DHN 2025 declara 3,4 m; ajuste à tábua: 3,339 m
 }
 
 
@@ -251,6 +269,7 @@ def prever_mare_harmonico(
         logger.warning(f"Harmônicas não encontradas para {porto_id} — usando TEMADRE como referência")
         harmonicas = HARMONICAS["TEMADRE"]
 
+    nivel_medio = NIVEL_MEDIO_M.get(porto_id, NIVEL_MEDIO_PADRAO_M)
     t0_h = _data_to_t0_horas(inicio)
     n_pts = int(dias * 24 * 60 / intervalo_min)
     resultados = []
@@ -264,8 +283,8 @@ def prever_mare_harmonico(
             eta += amp * math.cos(freq * t_h - fase)
 
         dt_ponto = inicio + timedelta(minutes=i * intervalo_min)
-        resultados.append(PontoMare(dt=dt_ponto, altura_m=round(eta + 1.0, 3)))
-        # +1.0 desloca a série para referência acima do zero local (NMM aproximado)
+        resultados.append(PontoMare(dt=dt_ponto, altura_m=round(eta + nivel_medio, 3)))
+        # nível médio: referência acima do zero hidrográfico (mesmo datum da profundidade)
 
     return resultados
 
