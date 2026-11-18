@@ -14,6 +14,7 @@
  */
 
 import type { JanelaMare, ValidacaoCalado, RestricoesMare, PontoMare, Porto, FonteCaladoMare } from './types';
+import { FREQ_RAD_H, HARMONICAS_DHN, NIVEL_MEDIO_M, type Harmonica } from './mareHarmonicas';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURAÇÕES DOS PORTOS BRASILEIROS
@@ -23,7 +24,7 @@ export const PORTOS_MARE: Record<string, {
   profundidade_m: number; amplitude_media_m: number;
   restricao_noturna: boolean;
 }> = {
-  TEMADRE:      { nome: 'Terminal Almirante Barroso', lat: -12.97, lon: -38.50, profundidade_m: 14.0, amplitude_media_m: 2.3, restricao_noturna: false },
+  TEMADRE:      { nome: 'Terminal de Madre de Deus',   lat: -12.75, lon: -38.62, profundidade_m: 14.0, amplitude_media_m: 2.3, restricao_noturna: false },
   SUAPE:        { nome: 'Porto de Suape',              lat: -8.40,  lon: -34.98, profundidade_m: 15.5, amplitude_media_m: 2.1, restricao_noturna: false },
   PECÉM:        { nome: 'Terminal Portuário do Pecém', lat: -3.54,  lon: -38.80, profundidade_m: 14.5, amplitude_media_m: 2.5, restricao_noturna: true  },
   MUCURIPE:     { nome: 'Porto de Mucuripe',           lat: -3.72,  lon: -38.48, profundidade_m: 11.0, amplitude_media_m: 2.6, restricao_noturna: true  },
@@ -36,84 +37,20 @@ export const PORTOS_MARE: Record<string, {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HARMÔNICAS — amplitude (m) e fase (graus), na convenção deste motor:
+// HARMÔNICAS — convenção deste motor:
 //   eta(t) = nível médio + Σ A·cos(freq·tJ − fase),  tJ = horas desde J2000 (UTC)
 //
-// PORTOS VALIDADOS (ITAQUI, SANTOS, SUAPE): 19 componentes ajustadas à Tábua de
-//   Marés DHN 2025 do porto — ajuste híbrido: alturas intermediárias pela regra
-//   cossenoidal da DHN + altura e derivada nula em cada extremo oficial. Erro da
-//   altura no instante dos extremos oficiais: Itaqui ~5 cm, Santos ~3 cm, Suape
-//   ~2 cm (teste: scripts/validar-mare-dhn.ts). Sem correção nodal: reajustar com
-//   a tábua de cada ano (deriva estimada de poucos min e cm até 2028).
-//
-// DEMAIS PORTOS — NÃO VALIDADOS: valores referenciais, calculados com as
-//   frequências legadas (FREQ_RAD_H_LEGADO). Antes de apresentar janela de maré
-//   a cliente, validar contra a Tábua DHN do porto e movê-lo para PORTOS_VALIDADOS.
+// Os dez portos do catálogo têm 53 componentes ajustadas à Tábua de Marés DHN 2025
+// de cada porto (src/lib/mareHarmonicas.ts — arquivo gerado; FONTE_DHN indica a
+// estação). Validação contra os extremos oficiais: scripts/validar-mare-dhn.ts.
+// Sem correção nodal: reajustar a cada ano com a tábua DHN do ano.
 // ─────────────────────────────────────────────────────────────────────────────
-type Harmonica = Record<string, [number, number]>; // comp → [amp, fase°]
 
-const HARMONICAS: Record<string, Harmonica> = {
-  // Adicionado M4, MS4 para águas rasas e K2 para modulação de S2
-  TEMADRE:       { M2:[0.60,245], S2:[0.22,275], N2:[0.13,228], K1:[0.11,190], O1:[0.08,165], M4:[0.02,310], MS4:[0.01,340], K2:[0.06,275] },
-  SUAPE:         {
-    M2:[0.7343,75.98], S2:[0.2697,218.79], N2:[0.1478,201.41], K2:[0.1063,11.22], O1:[0.0630,248.49],
-    NU2:[0.0550,168.37], K1:[0.0473,84.37], '2N2':[0.0415,327.67], MU2:[0.0320,292.35], L2:[0.0207,130.63],
-    Q1:[0.0185,356.54], P1:[0.0104,97.81], M3:[0.0048,53.42], M4:[0.0042,100.40], MN4:[0.0035,176.71],
-    MS4:[0.0026,48.88], M6:[0.0020,13.04], '2MS6':[0.0008,230.03], MK3:[0.0002,51.16],
-  },
-  PECÉM:         { M2:[0.65,220], S2:[0.24,255], N2:[0.14,205], K1:[0.12,170], O1:[0.09,148], M4:[0.03,280], MS4:[0.02,310], K2:[0.07,255] },
-  MUCURIPE:      { M2:[0.68,218], S2:[0.25,252], N2:[0.15,203], K1:[0.12,168], O1:[0.09,145], M4:[0.03,278], MS4:[0.02,308], K2:[0.07,252] },
-  ITAQUI:        {
-    M2:[2.1469,164.76], S2:[0.6052,329.36], N2:[0.4364,287.67], L2:[0.2545,181.87], K2:[0.2052,128.80],
-    O1:[0.1185,321.76], K1:[0.1070,90.41], MU2:[0.0904,126.54], NU2:[0.0833,251.96], '2N2':[0.0573,54.94],
-    P1:[0.0318,111.02], M4:[0.0141,151.81], M3:[0.0101,193.29], M6:[0.0067,326.09], '2MS6':[0.0060,100.16],
-    MN4:[0.0048,189.10], MS4:[0.0031,359.84], MK3:[0.0014,256.52], Q1:[0.0004,29.19],
-  },
-  VILA_DO_CONDE: { M2:[1.20,175], S2:[0.40,205], N2:[0.25,162], K1:[0.13,128], O1:[0.09,108], M4:[0.08,210], MS4:[0.05,240], K2:[0.11,205] },
-  SANTOS:        {
-    M2:[0.3617,49.61], S2:[0.2336,178.02], O1:[0.1284,194.10], K2:[0.0806,335.34], K1:[0.0642,349.54],
-    M3:[0.0564,171.65], N2:[0.0461,246.39], Q1:[0.0358,287.84], MK3:[0.0266,263.90], P1:[0.0200,359.10],
-    M4:[0.0149,261.11], '2MS6':[0.0129,97.52], NU2:[0.0082,199.58], MU2:[0.0055,171.37], '2N2':[0.0055,62.42],
-    MS4:[0.0040,232.07], M6:[0.0039,347.99], L2:[0.0036,329.46], MN4:[0.0021,211.45],
-  },
-  PARANAGUÁ:     { M2:[0.55,285], S2:[0.20,315], N2:[0.12,270], K1:[0.09,245], O1:[0.07,220], M4:[0.02,340], MS4:[0.01,10],  K2:[0.06,315] },
-  ITAJAÍ:        { M2:[0.40,290], S2:[0.16,322], N2:[0.09,275], K1:[0.08,248], O1:[0.06,222], M4:[0.01,345], MS4:[0.01,15],  K2:[0.04,322] },
-  RIO_GRANDE:    { M2:[0.18,315], S2:[0.07,340], N2:[0.04,300], K1:[0.07,260], O1:[0.05,235], M4:[0.00,0],   MS4:[0.00,0],   K2:[0.02,340] },
-};
+// Cópia mutável: garantirPortoMare() acrescenta portos com síntese aproximada.
+const HARMONICAS: Record<string, Harmonica> = { ...HARMONICAS_DHN };
 
-// Portos cujas constantes foram ajustadas e validadas contra a Tábua DHN.
-const PORTOS_VALIDADOS = new Set<string>(['ITAQUI', 'SANTOS', 'SUAPE']);
-
-// Frequências angulares (rad/hora) das componentes, com precisão total.
-// Como o tempo é contado desde J2000 (~230 mil horas), arredondar na 5ª casa
-// desloca a fase em ciclos inteiros: os valores antigos (ex.: M2 = 0.50591)
-// acumulavam 1,5 ciclo de erro na M2 em 2026 e derivavam ~21°/ano.
-const FREQ_RAD_H: Record<string, number> = {
-  M2: 0.505868049, S2: 0.523598776, N2: 0.496366918, K2: 0.525032342,
-  K1: 0.262516170, O1: 0.243351879, P1: 0.261082606, Q1: 0.233850748,
-  '2N2': 0.486865787, MU2: 0.488137322, NU2: 0.497638453, L2: 0.515369180,
-  M4: 1.011736098, MS4: 1.029466825, MN4: 1.002234967,
-  M3: 0.758802074, MK3: 0.768384221, M6: 1.517604149, '2MS6': 1.535334874,
-};
-
-// TRANSITÓRIO — frequências antigas, usadas só pelos portos ainda não validados.
-// As fases desses portos foram fixadas junto com estas frequências: trocar só as
-// frequências, sem reajustar as fases contra a DHN, piora a previsão. Remover
-// quando todos os portos estiverem em PORTOS_VALIDADOS.
-const FREQ_RAD_H_LEGADO: Record<string, number> = {
-  M2: 0.50591, S2: 0.52360, N2: 0.49637, K1: 0.26252, O1: 0.24339,
-  M4: 1.01182, MS4: 1.02951, K2: 0.52504,
-};
-
-// Nível médio (m) sobre o zero hidrográfico, para que a altura da maré fique
-// no mesmo datum da profundidade (ver calcularCaladoDisponivel) e da WorldTides
-// (datum 'CD'). Portos sem valor validado mantêm o 1,0 m anterior.
+// Nível médio usado por portos fora do catálogo (síntese aproximada).
 const NIVEL_MEDIO_PADRAO_M = 1.0;
-const NIVEL_MEDIO_M: Record<string, number> = {
-  ITAQUI: 3.34, // DHN 2025 declara 3,40 m
-  SANTOS: 0.77, // DHN 2025 declara 0,78 m
-  SUAPE: 1.28,  // DHN 2025 declara 1,27 m
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COBERTURA DATA-DRIVEN DE PORTOS
@@ -192,7 +129,6 @@ export function preverMareHarmonico(
 ): PontoMare[] {
   const harmonicas = HARMONICAS[portoId] ?? HARMONICAS['TEMADRE'];
   const nivelMedio = NIVEL_MEDIO_M[portoId] ?? NIVEL_MEDIO_PADRAO_M;
-  const freqs = PORTOS_VALIDADOS.has(portoId) ? FREQ_RAD_H : FREQ_RAD_H_LEGADO;
   const t0 = t0Horas(inicio);
   const nPts = Math.ceil((dias * 24 * 60) / intervaloMin);
   const pontos: PontoMare[] = [];
@@ -201,7 +137,7 @@ export function preverMareHarmonico(
     const tH = t0 + (i * intervaloMin) / 60;
     let eta = 0;
     for (const [comp, [amp, faseDeg]] of Object.entries(harmonicas)) {
-      const freq = freqs[comp] ?? 0;
+      const freq = FREQ_RAD_H[comp] ?? 0;
       const fase = (faseDeg * Math.PI) / 180;
       eta += amp * Math.cos(freq * tH - fase);
     }

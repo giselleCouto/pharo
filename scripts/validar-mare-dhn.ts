@@ -1,10 +1,8 @@
 /**
  * Validação do motor de maré (src/lib/tideEngine.ts) contra as Tábuas de Marés oficiais da DHN.
  *
- * Referência: Marinha do Brasil, DHN — Tábuas de Marés 2025 (horários convertidos para UTC):
- *   ITAQUI  Porto de Itaqui (MA)    30 componentes, nível médio 3,40 m, Carta 413
- *   SANTOS  Porto de Santos (SP)    24 componentes, nível médio 0,78 m, Carta 1711
- *   SUAPE   Porto de Suape (PE)     30 componentes, nível médio 1,27 m, Carta 906
+ * Referência: Marinha do Brasil, DHN — Tábuas de Marés 2025 dos dez portos do catálogo
+ * (estações em FONTE_DHN, src/lib/mareHarmonicas.ts), horários convertidos para UTC.
  * Fixtures: scripts/fixtures/dhn_<porto>_2025_extremos.csv (eventos marcados '?' — estofos — são ignorados).
  *
  * Para cada porto, gera a série de 2025 a cada 5 min e mede:
@@ -21,13 +19,22 @@ import { readFileSync } from 'node:fs';
 import { preverMareHarmonico } from '../src/lib/tideEngine';
 
 const LIMITE_ALTURA_CM = 8;
-// Horário dos extremos: em Santos a maré é pequena e cheia de efeitos de águas rasas (preamares
-// achatadas, baixa-mar dupla); num pico achatado, poucos centímetros deslocam muito o "momento" do pico.
-// Por isso o limite de horário de Santos é maior — o critério que importa para UKC é a altura.
+// Horário dos extremos: nas marés pequenas e mistas do Sudeste e do Sul (Santos, Paranaguá, Itajaí,
+// Rio Grande) há preamares achatadas, dupla preamar e dupla baixa-mar; num pico achatado, poucos
+// centímetros deslocam muito o "momento" do pico. O limite de horário é maior nesses portos — o
+// critério que importa para UKC é a altura, com o mesmo limite em todos.
+const F = (p: string) => `scripts/fixtures/dhn_${p}_2025_extremos.csv`;
 const PORTOS: Record<string, { fixture: string; limiteMin: number }> = {
-  ITAQUI: { fixture: 'scripts/fixtures/dhn_itaqui_2025_extremos.csv', limiteMin: 10 },
-  SANTOS: { fixture: 'scripts/fixtures/dhn_santos_2025_extremos.csv', limiteMin: 30 },
-  SUAPE: { fixture: 'scripts/fixtures/dhn_suape_2025_extremos.csv', limiteMin: 10 },
+  ITAQUI: { fixture: F('itaqui'), limiteMin: 10 },
+  SANTOS: { fixture: F('santos'), limiteMin: 30 },
+  SUAPE: { fixture: F('suape'), limiteMin: 10 },
+  TEMADRE: { fixture: F('madredeus'), limiteMin: 10 },
+  'PECÉM': { fixture: F('pecem'), limiteMin: 10 },
+  MUCURIPE: { fixture: F('mucuripe'), limiteMin: 10 },
+  VILA_DO_CONDE: { fixture: F('viladoconde'), limiteMin: 10 },
+  'PARANAGUÁ': { fixture: F('paranagua'), limiteMin: 30 },
+  'ITAJAÍ': { fixture: F('itajai'), limiteMin: 30 },
+  RIO_GRANDE: { fixture: F('riogrande'), limiteMin: 30 },
 };
 
 const media = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length;
@@ -65,7 +72,7 @@ function validar(portoId: string): boolean {
   const [ecm, emin] = [media(dh), media(dt)];
   const ok = ecm <= LIMITE_ALTURA_CM && emin <= limiteMin;
   console.log(
-    `${ok ? 'OK   ' : 'FALHA'} ${portoId.padEnd(7)} altura no instante ${ecm.toFixed(1)} cm (limite ${LIMITE_ALTURA_CM}) | ` +
+    `${ok ? 'OK   ' : 'FALHA'} ${portoId.padEnd(13)} altura no instante ${ecm.toFixed(1)} cm (limite ${LIMITE_ALTURA_CM}) | ` +
     `horário dos extremos ${emin.toFixed(1)} min (limite ${limiteMin})  [n=${dhn.length}]`,
   );
   return ok;
