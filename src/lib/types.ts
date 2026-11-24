@@ -352,5 +352,6 @@ export const ROUTE_PATHS = {
   CONFIGURACAO: '/configuracao',
   OTIMIZACAO: '/otimizacao',
   RESULTADOS: '/resultados',
+  PLANO_VIAGEM: '/plano-viagem',
   PLANOS: '/planos',
 } as const;

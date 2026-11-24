@@ -10,12 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
   BarChart3, Download, Ship, MapPin, Package, TrendingDown,
-  CheckCircle, Star, Navigation, Clock, Anchor, Copy, Check
+  CheckCircle, Star, Navigation, Clock, Anchor, Copy, Check, Compass
 } from 'lucide-react';
 import { cn, formatarUsd, formatarBrl, formatarCbm, formatarPct, formatarNm, formatarData } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { gerarJsonSaida } from '@/lib/optimizer';
 import GanttChart from '@/components/GanttChart';
+import { PlanoViagemResultados } from '@/components/plano-viagem/PlanoViagemResultados';
 
 // ─── Mapa SVG de Rotas ─────────────────────────────────────────
 function MapaRotas({ cenario, portos }: { cenario: CenarioOtimizacao; portos: Array<{ id: string; nome: string; latitude: number; longitude: number }> }) {
@@ -416,6 +417,9 @@ export default function ResultadosPage() {
             <TabsTrigger value="mares" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <span>🌊</span> Marés & Calado
             </TabsTrigger>
+            <TabsTrigger value="plano" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Compass className="w-4 h-4" /> Plano de Viagem
+            </TabsTrigger>
           </TabsList>
 
           {/* ABA VIAGENS */}
@@ -626,6 +630,24 @@ export default function ResultadosPage() {
               viagens={cenarioSelecionado.viagens}
               configuracao={configuracao}
             />
+          </TabsContent>
+
+          {/* ABA PLANO DE VIAGEM */}
+          <TabsContent value="plano">
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-primary" />
+                  Plano de Viagem — rota por waypoints e RTZ por perna
+                </CardTitle>
+                <CardDescription>
+                  Cada perna da viagem vira uma rota costeira de planejamento, com velocidade e ETA, exportável para o ECDIS.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PlanoViagemResultados key={cenarioSelecionado.tipo} cenario={cenarioSelecionado} configuracao={configuracao} />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       )}

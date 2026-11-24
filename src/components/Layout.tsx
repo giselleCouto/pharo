@@ -1,6 +1,6 @@
 import { NavLink, Link } from 'react-router-dom';
 import { ROUTE_PATHS } from '@/lib/types';
-import { Settings, Zap, BarChart3, Home, Crown, LogOut, AlertTriangle } from 'lucide-react';
+import { Settings, Zap, BarChart3, Home, Crown, LogOut, AlertTriangle, Compass } from 'lucide-react';
 import { PharosLogo } from '@/components/PharosLogo';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useTenant';
@@ -14,6 +14,7 @@ const navItems = [
   { path: ROUTE_PATHS.CONFIGURACAO, label: 'Configuração', icon: Settings },
   { path: ROUTE_PATHS.OTIMIZACAO, label: 'Otimização', icon: Zap },
   { path: ROUTE_PATHS.RESULTADOS, label: 'Resultados', icon: BarChart3 },
+  { path: ROUTE_PATHS.PLANO_VIAGEM, label: 'Plano de Viagem', icon: Compass },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
