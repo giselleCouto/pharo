@@ -14,6 +14,7 @@
  */
 
 import type { JanelaMare, ValidacaoCalado, RestricoesMare, PontoMare, Porto, FonteCaladoMare } from './types';
+import { FREQ_RAD_H, HARMONICAS_DHN, NIVEL_MEDIO_M, type Harmonica } from './mareHarmonicas';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURAÇÕES DOS PORTOS BRASILEIROS
@@ -23,7 +24,7 @@ export const PORTOS_MARE: Record<string, {
   profundidade_m: number; amplitude_media_m: number;
   restricao_noturna: boolean;
 }> = {
-  TEMADRE:      { nome: 'Terminal Almirante Barroso', lat: -12.97, lon: -38.50, profundidade_m: 14.0, amplitude_media_m: 2.3, restricao_noturna: false },
+  TEMADRE:      { nome: 'Terminal de Madre de Deus',   lat: -12.75, lon: -38.62, profundidade_m: 14.0, amplitude_media_m: 2.3, restricao_noturna: false },
   SUAPE:        { nome: 'Porto de Suape',              lat: -8.40,  lon: -34.98, profundidade_m: 15.5, amplitude_media_m: 2.1, restricao_noturna: false },
   PECÉM:        { nome: 'Terminal Portuário do Pecém', lat: -3.54,  lon: -38.80, profundidade_m: 14.5, amplitude_media_m: 2.5, restricao_noturna: true  },
   MUCURIPE:     { nome: 'Porto de Mucuripe',           lat: -3.72,  lon: -38.48, profundidade_m: 11.0, amplitude_media_m: 2.6, restricao_noturna: true  },
@@ -36,30 +37,20 @@ export const PORTOS_MARE: Record<string, {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HARMÔNICAS — amplitude (m) e fase (graus) das 5 componentes principais
-// Extraídas da Tábua DHN 2026
+// HARMÔNICAS — convenção deste motor:
+//   eta(t) = nível médio + Σ A·cos(freq·tJ − fase),  tJ = horas desde J2000 (UTC)
+//
+// Os dez portos do catálogo têm 53 componentes ajustadas à Tábua de Marés DHN 2025
+// de cada porto (src/lib/mareHarmonicas.ts — arquivo gerado; FONTE_DHN indica a
+// estação). Validação contra os extremos oficiais: scripts/validar-mare-dhn.ts.
+// Sem correção nodal: reajustar a cada ano com a tábua DHN do ano.
 // ─────────────────────────────────────────────────────────────────────────────
-type Harmonica = Record<string, [number, number]>; // comp → [amp, fase°]
 
-const HARMONICAS: Record<string, Harmonica> = {
-  // Adicionado M4, MS4 para águas rasas e K2 para modulação de S2
-  TEMADRE:       { M2:[0.60,245], S2:[0.22,275], N2:[0.13,228], K1:[0.11,190], O1:[0.08,165], M4:[0.02,310], MS4:[0.01,340], K2:[0.06,275] },
-  SUAPE:         { M2:[0.58,230], S2:[0.20,262], N2:[0.12,214], K1:[0.10,180], O1:[0.07,155], M4:[0.01,290], MS4:[0.01,320], K2:[0.05,262] },
-  PECÉM:         { M2:[0.65,220], S2:[0.24,255], N2:[0.14,205], K1:[0.12,170], O1:[0.09,148], M4:[0.03,280], MS4:[0.02,310], K2:[0.07,255] },
-  MUCURIPE:      { M2:[0.68,218], S2:[0.25,252], N2:[0.15,203], K1:[0.12,168], O1:[0.09,145], M4:[0.03,278], MS4:[0.02,308], K2:[0.07,252] },
-  ITAQUI:        { M2:[1.80,180], S2:[0.58,210], N2:[0.38,165], K1:[0.14,130], O1:[0.10,110], M4:[0.15,220], MS4:[0.10,250], K2:[0.16,210] },
-  VILA_DO_CONDE: { M2:[1.20,175], S2:[0.40,205], N2:[0.25,162], K1:[0.13,128], O1:[0.09,108], M4:[0.08,210], MS4:[0.05,240], K2:[0.11,205] },
-  SANTOS:        { M2:[0.42,295], S2:[0.18,330], N2:[0.09,278], K1:[0.08,250], O1:[0.06,225], M4:[0.01,350], MS4:[0.01,20],  K2:[0.05,330] },
-  PARANAGUÁ:     { M2:[0.55,285], S2:[0.20,315], N2:[0.12,270], K1:[0.09,245], O1:[0.07,220], M4:[0.02,340], MS4:[0.01,10],  K2:[0.06,315] },
-  ITAJAÍ:        { M2:[0.40,290], S2:[0.16,322], N2:[0.09,275], K1:[0.08,248], O1:[0.06,222], M4:[0.01,345], MS4:[0.01,15],  K2:[0.04,322] },
-  RIO_GRANDE:    { M2:[0.18,315], S2:[0.07,340], N2:[0.04,300], K1:[0.07,260], O1:[0.05,235], M4:[0.00,0],   MS4:[0.00,0],   K2:[0.02,340] },
-};
+// Cópia mutável: garantirPortoMare() acrescenta portos com síntese aproximada.
+const HARMONICAS: Record<string, Harmonica> = { ...HARMONICAS_DHN };
 
-// Frequências angulares (rad/hora) das componentes
-const FREQ_RAD_H: Record<string, number> = {
-  M2: 0.50591, S2: 0.52360, N2: 0.49637, K1: 0.26252, O1: 0.24339,
-  M4: 1.01182, MS4: 1.02951, K2: 0.52504,
-};
+// Nível médio usado por portos fora do catálogo (síntese aproximada).
+const NIVEL_MEDIO_PADRAO_M = 1.0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COBERTURA DATA-DRIVEN DE PORTOS
@@ -137,6 +128,7 @@ export function preverMareHarmonico(
   intervaloMin = 30,
 ): PontoMare[] {
   const harmonicas = HARMONICAS[portoId] ?? HARMONICAS['TEMADRE'];
+  const nivelMedio = NIVEL_MEDIO_M[portoId] ?? NIVEL_MEDIO_PADRAO_M;
   const t0 = t0Horas(inicio);
   const nPts = Math.ceil((dias * 24 * 60) / intervaloMin);
   const pontos: PontoMare[] = [];
@@ -150,7 +142,7 @@ export function preverMareHarmonico(
       eta += amp * Math.cos(freq * tH - fase);
     }
     const dt = new Date(inicio.getTime() + i * intervaloMin * 60_000);
-    pontos.push({ dt: dt.toISOString(), altura_m: +(eta + 1.0).toFixed(3), tipo: 'height' });
+    pontos.push({ dt: dt.toISOString(), altura_m: +(eta + nivelMedio).toFixed(3), tipo: 'height' });
   }
   return pontos;
 }
