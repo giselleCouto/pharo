@@ -17,6 +17,7 @@ Maritime cabotage planning is a constrained decision problem: each route must sa
 - Bunker, time-charter, spot vessel and demurrage cost modeling.
 - Web Worker optimization engine to keep the UI responsive.
 - Exportable JSON output for downstream APIs or executive analysis.
+- Voyage plan (phase 1): coastal route by waypoints between catalog ports, with configurable clearance from the coastline and from a safety isobath, speed and ETA per leg, and RTZ export (IEC 61174 route exchange format) for ECDIS. Planning only — the navigation authority is the ECDIS with official ENCs. See [`docs/plano-de-viagem`](docs/plano-de-viagem/README.md).
 
 ## Technical Stack
 
@@ -40,6 +41,7 @@ The optimization engine runs in `src/lib/optimizer.worker.ts` and delegates doma
 | `constraints.ts` | Draft, tide, port and product-segregation constraints |
 | `tideEngine.ts` | Client-side harmonic tide estimation |
 | `mare.ts` | Effective draft and tide-window calculations |
+| `navegacao/` | Voyage plan: coastal router (GEBCO + Natural Earth grid), RTZ export |
 
 ## Repository Structure
 
@@ -75,6 +77,13 @@ Useful checks:
 ```bash
 npm run lint
 npx tsc --noEmit -p tsconfig.app.json --strict
+```
+
+Voyage-plan tests (routes for every pair of catalog ports never cross land; RTZ checked against the official XSD when Python + lxml are available):
+
+```bash
+npx esbuild scripts/testar-plano-viagem.ts --bundle --platform=node --format=esm --outfile=testar-plano-viagem.mjs
+node testar-plano-viagem.mjs
 ```
 
 ## Decision-Science Angle

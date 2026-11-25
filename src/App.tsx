@@ -12,6 +12,7 @@ import ConfiguracaoPage from '@/pages/Configuracao';
 import OtimizacaoPage from '@/pages/Otimizacao';
 import ResultadosPage from '@/pages/Resultados';
 import PlanosPage from '@/pages/Planos';
+import PlanoViagemPage from '@/pages/PlanoViagem';
 
 function App() {
   useEffect(() => {
@@ -46,6 +47,9 @@ function App() {
         } />
         <Route path={ROUTE_PATHS.RESULTADOS} element={
           <AuthGuard><TenantBootstrap /><Layout><ResultadosPage /></Layout></AuthGuard>
+        } />
+        <Route path={ROUTE_PATHS.PLANO_VIAGEM} element={
+          <AuthGuard><TenantBootstrap /><Layout><PlanoViagemPage /></Layout></AuthGuard>
         } />
         <Route path={ROUTE_PATHS.PLANOS} element={
           <AuthGuard><TenantBootstrap /><Layout><PlanosPage /></Layout></AuthGuard>
